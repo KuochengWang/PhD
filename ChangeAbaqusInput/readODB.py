@@ -5,6 +5,7 @@
 # run: abaqus python readODB.py
 # in order to run abaqus simulation: abaqus j=breast int cpus=4
 
+import manipulate_abaqus_file
 import numpy as np
 from odbAccess import openOdb
 import os
@@ -34,6 +35,10 @@ def move_breast(node_file, element_file, odb_file, step_name):
         moved_coords.append(coord + disps[i])
         pdb.set_trace()
     return moved_coords
+
+def insert(file_name):
+    abaqus = manipulate_abaqus_file.ReadAbaqusInput()dd
+    abaqus.insert(self, section_name, content, file_name)
 
 if __name__ == "__main__":
     odb = 'Job-6.odb'
