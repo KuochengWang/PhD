@@ -33,19 +33,24 @@ def move_breast(node_file, element_file, odb_file, step_name):
     moved_coords = []
     for i, coord in enumerate(original_coords):
         moved_coords.append(coord + disps[i])
-        pdb.set_trace()
     return moved_coords
 
-def insert(file_name):
-    abaqus = manipulate_abaqus_file.ReadAbaqusInput()dd
-    abaqus.insert(self, section_name, content, file_name)
+# insert node positions to .inp
+# @param file_name the .inp need to be written into
+# @param positions the node positions
+def insert_nodes(file_name, positions):
+    abaqus = manipulate_abaqus_file.ReadAbaqusInput(file_name)
+    abaqus.add_node(positions, file_name)
 
 if __name__ == "__main__":
     odb = 'Job-6.odb'
     step = 'Step-2'
     node = 'Skin_Layer.node'
     element = 'Skin_Layer.ele'
-    move_breast(node, element, odb, step)
+    output_file = 'Job-4.inp'
+    positions = move_breast(node, element, odb, step)
+    insert_nodes(output_file, positions)
+    
       
     
 
