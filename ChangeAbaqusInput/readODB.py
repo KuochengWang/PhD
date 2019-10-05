@@ -13,6 +13,9 @@ import pdb
 import read_tetgen
 
 # odb file repeat displacements, so the node number become twice as large
+# @param file_name the .odb file 
+# @param step_name the step name from Abaqus file
+# return an np array of displacement
 def read_lastframe(file_name, step_name):
     odb = openOdb(file_name)
     if len(odb.steps[step_name].frames)== 0:
@@ -26,6 +29,10 @@ def read_lastframe(file_name, step_name):
         disps.append(temp_disp)
     return np.array(disps)
 
+# calculate coordinate after displacement
+# @param node_file .node from TetGen
+# @param element_file .ele from TetGen 
+# return the coordination after move 
 def move_breast(node_file, element_file, odb_file, step_name):
     disps = read_lastframe(odb_file, step_name)
     content = read_tetgen.ReadTetGen(element_file, node_file)
