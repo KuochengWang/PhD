@@ -1,10 +1,3 @@
-
-# coding: utf-8
-
-# In[ ]:
-# run: abaqus python readODB.py
-# in order to run abaqus simulation: abaqus j=breast int cpus=4
-
 import manipulate_abaqus_file
 import numpy as np
 from odbAccess import openOdb
@@ -45,9 +38,9 @@ def move_breast(node_file, element_file, odb_file, step_name):
 # insert node positions to .inp
 # @param file_name the .inp need to be written into
 # @param positions the node positions
-def insert_nodes(file_name, positions):
+def insert_nodes(file_name, positions, part):
     abaqus = manipulate_abaqus_file.ReadAbaqusInput(file_name)
-    abaqus.add_node(positions, file_name)
+    abaqus.add_node(positions, file_name, part)
 
 if __name__ == "__main__":
     odb = 'Job-6.odb'
@@ -55,8 +48,9 @@ if __name__ == "__main__":
     node = 'Skin_Layer.node'
     element = 'Skin_Layer.ele'
     output_file = 'Job-4.inp'
+    part = '*Part, name=PART-1\n'
     positions = move_breast(node, element, odb, step)
-    insert_nodes(output_file, positions)
+    insert_nodes(output_file, positions, part)
     
       
     
