@@ -4,6 +4,7 @@ Created on Thu Oct  3 15:16:04 2019
 
 @author: vr_lab
 """
+import numpy as np
 import pdb
 
 class ReadAbaqusInput:
@@ -21,6 +22,9 @@ class ReadAbaqusInput:
             pos = str(i + 1) + ',' + str(node[0]) + ',' + str(node[1]) + ',' + str(node[2]) + '\n'
             contents.insert(index + i, pos)
         contents = "".join(contents)
+        write_output(output_file, contents)
+    
+    def write_output(self, output_file, contents):
         f = open(output_file, "w")
         f.write(contents)
         f.close()
@@ -48,4 +52,20 @@ class ReadAbaqusInput:
     def read_part(self, part):
         contents, index = self.return_content_and_insert_position(part)
         return self.__read_coordinates__(contents, index + 2)
-        
+    
+    # change the boundary condition
+    # @param start_line the enrire line string that boundary start with 
+    # #param time_period the time period set from Abaqus
+    def change_boundary(self, start_line, time_period, direction, magnitude, output_file): 
+        content, index = self.return_content_and_insert_position(start_line)
+        direction = direction / np.linalg.norm(direction) * magnitude
+        content[index + 1] = 'Set-6, 1, 1, ' + str(direction[0]) + '\n'
+        content[index + 2] = 'Set-6, 2, 2, ' + str(direction[1]) + '\n'
+        content[index + 3] = 'Set-6, 3, 3, ' + str(direction[2]) + '\n'
+        pdb.set_trace()
+        write_output(output_file, content)
+    
+    # read time period from .inp    
+    def read_timeperiod(self, start_line):
+        content, index = self.return_content_and_insert_position(start_line)
+        return float(content[index + 1].strip().split(',')[1])
