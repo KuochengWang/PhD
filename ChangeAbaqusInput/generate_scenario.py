@@ -100,49 +100,59 @@ class HandManipulate:
     # @param file_name the abaqus.inp file name
     # @param part the part name the hand represents in abaqus.inp file
     def __init__(self, file_name, part):
-        self.abaqus_file = file_name
         self.hand_part = part
+        self.abaqus = manipulate_abaqus_file.ReadAbaqusInput(file_name)
         
     def __find_handtip__(self):
-        abaqus = manipulate_abaqus_file.ReadAbaqusInput(self.abaqus_file)
-        hand_points = np.array(abaqus.read_part(self.hand_part))
+         
+        hand_points = np.array(self.abaqus.read_part(self.hand_part))
         hand_y = hand_points[:, 1]
         result = np.where(np.max(hand_y) == hand_y)
         ymax_index = result[0][0]
         hand_tip = hand_points[ymax_index]
+        
         return hand_tip
+    
+    
     
     # move hand to the surface based on surface points
     # @param base_y is y value of base plane
-    # return the hand move direction and magnitude of all grid
-    def move_hand_to_surface(self, surface_points, directions, base_y):
+    # @param base_center the center of the 4 edges
+    # return the hand move direction 
+    def move_hand_to_surface(self, surface_points, base_center):
         hand_tip = self.__find_handtip__()
         move_vecs = []
-        magnitudes = []
-        depth_percentage = 0.25
-        for point, direc in zip(surface_points, directions):
-            move_vec = point + direc - hand_tip
-            magnitude = (base_y - point[1]) * depth_percentage
-            move_vecs.append(move_vec)
-            magnitudes.append(magnitude)
-        return move_vecs, magnitudes
+   #     tolerance = np.array([0, -2, 0]) +
+        tolerance = 4
+        for point in surface_points:
+            move_vec = point - hand_tip + tolerance * (point -  base_center) / np.linalg.norm(point -  base_center)  
+            move_vecs.append(move_vec)            
+        return move_vecs
     
     # set the boundary condition of hand so it can move to different direction
     # @param arg[0] the line content with boundary of hand
     # @param arg[1] the line content for time period
     # @param arg[2] the direction the hand should move to
-    # @param arg[3] the magnitude of the hand should move to
-    # @param arg[4] the output .inp file we should write to
+    # @param arg[3] the point of the hand should move to
+    # @param arg[4] the y axis of the breast base
     def set_boundary(self, arg):
         boundary_line = arg[0]
         time_period_line = arg[1]
         direction = arg[2]
-        magnitude = arg[3]
-        output_file = arg[4]
-        abaqus = manipulate_abaqus_file.ReadAbaqusInput(self.abaqus_file)
-        time_period = abaqus.read_timeperiod(time_period_line)
-        pdb.set_trace()
-        abaqus.change_boundary(boundary_line, time_period, direction, magnitude / time_period, output_file)
+        surface_point = arg[3]
+        base = arg[4]
+        depth_ratio = 0.25
+        time_period = self.abaqus.read_timeperiod(time_period_line)
+        depth = (base - surface_point[1]) * depth_ratio
+        self.abaqus.set_boundary(boundary_line, time_period, direction, depth / time_period)
+        
+    # @param assembly the content of the line that assembly start
+    # @param vec is the new vector of the assembly
+    def set_assembly(self, assembly, vec):
+        self.abaqus.set_assembly(assembly, vec)
+        
+    def write_output(self, output_file):
+        self.abaqus.write_output(output_file)
         
 # form the grid for hand to palpate
 # returns a list of [x,z] as grid coord
@@ -173,6 +183,7 @@ if __name__ == "__main__":
     abaqus_inp = 'Jobs/Job-4.inp'
     breast_info = GetInfoFromBreast(element, node)
     edge = breast_info.find_edge()
+
     hand_part = '*Part, name=Part-2\n'
     grids_positions = grid(edge[0][0], edge[1][0], edge[2][2], edge[3][2])
     surface_points = breast_info.find_all_surface_point(grids_positions, surface) 
@@ -181,11 +192,18 @@ if __name__ == "__main__":
         directions.append(find_direction(pos, edge))
     hand = HandManipulate(abaqus_inp, hand_part)
     base = max([edge[0][1], edge[1][1], edge[2][1], edge[3][1]]) 
-    move_dirs, move_mags = hand.move_hand_to_surface(surface_points, directions, base)
+    trans_vector = hand.move_hand_to_surface(surface_points, (edge[0] + edge[1] + edge[2] + edge[3]) / 4)
     
     boundary = '*Boundary, amplitude=Amp-1\n'
     time_period = '*Amplitude, name=Amp-1, time=TOTAL TIME, definition=EQUALLY SPACED, fixed interval=1.\n'
-    for move_dir, move_mag in zip(move_dirs, move_mags):
-        boundary_arg = [boundary, time_period, move_dir, move_mag, abaqus_inp]
+    assembly = '*Instance, name=Part-2-1, part=Part-2\n'
+    index = 0
+    for vec, direction, surface_point in zip(trans_vector, directions, surface_points):
+        hand.set_assembly(assembly, vec)
+        boundary_arg = [boundary, time_period, direction, surface_point, base]
         hand.set_boundary(boundary_arg)
+        if index%5 == 0:
+            hand.write_output('Jobs/' + str(index) + '.inp')
+        index += 1        
         
+    
