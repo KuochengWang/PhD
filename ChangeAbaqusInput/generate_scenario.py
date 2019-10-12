@@ -29,6 +29,7 @@ def find_direction(hand_pos, tetrahedral_mesh):
     depth = 10          
     keys = list(range(1, 28))
     random.shuffle(keys)
+    dist = -1
     for direction_key in keys:
         counter = 1
         for x in HAND_DIRECTION:
@@ -41,17 +42,16 @@ def find_direction(hand_pos, tetrahedral_mesh):
                     direction = unit_vector(np.array([x, y, z]))
                     collide_triangle = tetrahedral_mesh.triangle_collision_dection(hand_pos, \
                                                hand_pos + direction * depth)
-                    if collide_triangle is not None:                    
-                        if tetrahedral_mesh.side_of_triangle(collide_triangle, hand_pos) and \
-                        tetrahedral_mesh.side_of_triangle(collide_triangle, hand_pos + direction * depth):
-                                continue
+                    
+                    if collide_triangle is not None:                                   
                         step = np.array([x, y, z])
                         find = True
-                                                                             
+                        dist = np.linalg.norm(collide_triangle - hand_pos)                                                     
                     if find:
-                        return step
+                        return step, dist
+    
     print('did not find one')
-    return  np.array([0, 1, 0])
+    return  np.array([0, 1, 0]), dist
                     
 class GetInfoFromBreast:
     def __init__(self, elementfile, nodefile):
@@ -141,16 +141,20 @@ class HandManipulate:
     # @param arg[2] the direction the hand should move to
     # @param arg[3] the point of the hand should move to
     # @param arg[4] the y axis of the breast base
+    # @param arg[5] the distance from 
     def set_boundary(self, arg):
         boundary_line = arg[0]
         time_period_line = arg[1]
         direction = arg[2]
         surface_point = arg[3]
         base = arg[4]
+        dist = arg[5]
         depth_ratio = 0.25
         time_period = self.abaqus.read_timeperiod(time_period_line)
         depth = (base - surface_point[1]) * depth_ratio
-        self.abaqus.set_boundary(boundary_line, time_period, direction, depth / time_period)
+        depth = 0
+        time_period = 1
+        self.abaqus.set_boundary(boundary_line, time_period, direction, (depth + dist) / time_period)
         
     # @param assembly the content of the line that assembly start
     # @param vec is the new vector of the assembly
@@ -293,6 +297,8 @@ class TetrahedralMesh:
         for tri in self.triangles:
             triangle_point = np.array([self.nodes[tri[0]], \
                                        self.nodes[tri[1]], self.nodes[tri[2]]])
+            if self.side_of_triangle(triangle_point, p0) and self.side_of_triangle(triangle_point, p1):
+                continue
             if self.ray_intersect_triangle(p0, p1, triangle_point):
                 return triangle_point
         return 
@@ -324,7 +330,10 @@ class TetrahedralMesh:
         return self.graph.BFS(point)
     
     def surface_tetrahedral(self, point):
-        return
+        points = self.contact_points(point)
+        tetrahedral_indices = []
+        for point in points:
+            tetrahedral_indices.append(self.point_to_tet[node_index])
     
     def point_to_tetrahedral(self):
         tetrahedrons = self.tetrahedrons.tolist()
@@ -372,13 +381,18 @@ if __name__ == "__main__":
     index = 0
     
     directions = []
-    tetrahedral_mesh = TetrahedralMesh(element, surface, node) 
-    for i, vec in enumerate(trans_vector[0::5]):     
-        directions.append(find_direction(hand_tip + vec, tetrahedral_mesh))
+    distances = []
+    tetrahedral_mesh = TetrahedralMesh(element, surface, node)
+   
+    for i, vec in enumerate(trans_vector[0::50]):
+        direc, dist = find_direction(hand_tip + vec, tetrahedral_mesh)
+        directions.append(direc)
+        distances.append(dist)
         print(i)
-    for vec, direction, surface_point in zip(trans_vector[0::5], directions[0::5], surface_points[0::5]):
+        
+    for vec, direction, surface_point, distance in zip(trans_vector[0::50], directions, surface_points[0::50], distances):
         hand.set_assembly(assembly, vec)
-        boundary_arg = [boundary, time_period, direction, surface_point, base]
+        boundary_arg = [boundary, time_period, direction, surface_point, base, distance]
         hand.set_boundary(boundary_arg)
         hand.write_output('Jobs/' + str(index) + '.inp')
         index += 1
