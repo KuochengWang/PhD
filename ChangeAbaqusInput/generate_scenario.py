@@ -12,7 +12,7 @@ VERTICLE_DIRECTION = [0, 1, 0]
 HORIZONTAL_GRID_NUMER = 50
 VERTICLE_GRID_NUMER = 25
 BOUNDARY_INTERVAL = 5
-MOVE_HAND_TO_SURFACE_TOLERANCE = 4
+MOVE_HAND_TO_SURFACE_TOLERANCE = 2
 
 def unit_vector(vector):
     return vector / np.linalg.norm(vector)
@@ -24,34 +24,13 @@ def angle_between(v1, v2):
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)) * 180 / math.pi
     
 # find direction to move hand to palpate breast
-def find_direction(hand_pos, tetrahedral_mesh):
-    find = False
-    depth = 10          
+def find_direction(hand_pos, tetrahedral_mesh):          
     keys = list(range(1, 28))
-    random.shuffle(keys)
-    dist = -1
-    for direction_key in keys:
-        counter = 1
-        for x in HAND_DIRECTION:
-            for y in HAND_DIRECTION:
-                for z in HAND_DIRECTION:
-                    if (x == 0 and y == 0 and z == 0) or counter != direction_key:
-                        counter += 1 
-                        continue
-                    
-                    direction = unit_vector(np.array([x, y, z]))
-                    collide_triangle = tetrahedral_mesh.triangle_collision_dection(hand_pos, \
-                                               hand_pos + direction * depth)
-                    
-                    if collide_triangle is not None:                                   
-                        step = np.array([x, y, z])
-                        find = True
-                        dist = np.linalg.norm(collide_triangle - hand_pos)                                                     
-                    if find:
-                        return step, dist
-    
-    print('did not find one')
-    return  np.array([0, 1, 0]), dist
+    random.shuffle(keys)    
+    closest_point = tetrahedral_mesh.closest_triangle_point(hand_pos)
+    direction = closest_point - hand_pos
+    dist = np.sum(np.abs(direction)**2,axis=-1)**(1./2)
+    return  direction, dist
                     
 class GetInfoFromBreast:
     def __init__(self, elementfile, nodefile):
@@ -129,7 +108,6 @@ class HandManipulate:
     def move_hand_to_surface(self, surface_points, base_center):
         hand_tip = self.__find_handtip__()
         move_vecs = []
-        MOVE_HAND_TO_SURFACE_TOLERANCE = 4
         for point in surface_points:
             move_vec = point - hand_tip + MOVE_HAND_TO_SURFACE_TOLERANCE * (point -  base_center) / np.linalg.norm(point -  base_center)  
             move_vecs.append(move_vec)            
@@ -149,10 +127,9 @@ class HandManipulate:
         surface_point = arg[3]
         base = arg[4]
         dist = arg[5]
-        depth_ratio = 0.25
+        depth_ratio = 0.2
         time_period = self.abaqus.read_timeperiod(time_period_line)
         depth = (base - surface_point[1]) * depth_ratio
-        depth = 0
         time_period = 1
         self.abaqus.set_boundary(boundary_line, time_period, direction, (depth + dist) / time_period)
         
@@ -205,8 +182,7 @@ class TetrahedralMesh:
     class Graph:
         def __init__(self):  
             self.graph = defaultdict(list) 
-            self.visited = dict()
-            
+            self.visited = dict()            
             
         def add_edge(self,u,v): 
             self.graph[u].append(v) 
@@ -302,6 +278,16 @@ class TetrahedralMesh:
             if self.ray_intersect_triangle(p0, p1, triangle_point):
                 return triangle_point
         return 
+    
+    def closest_triangle_point(self, point):
+        unique_tri_points = list(np.unique(self.triangles))
+        triangle_points = [] 
+        for tri in unique_tri_points: 
+            triangle_points.append(self.nodes[tri])
+        temp_dist = np.array(triangle_points) - point
+        dist = np.sum(np.abs(temp_dist)**2,axis=-1)**(1./2)
+        min_dist_index = (list(dist)).index(min(dist))
+        return self.nodes[min_dist_index]
     
     # find which side of the triangle the point lies in
     # arguments:
