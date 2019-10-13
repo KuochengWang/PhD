@@ -71,18 +71,22 @@ class GetInfoFromBreast:
                     if temp_y < min_y:
                         min_y = temp_y
                         surface_point = pos
+                        surface_point_index = index
             if min_y == sys.float_info.max:
                 tolerace += 1
-        return surface_point
+        return surface_point, surface_point_index
     
     def find_all_surface_point(self, grid_points, surface_file):
         surface_points = []
+        surface_points_indices = []
         content = read_tetgen.ReadTetGen('', '')
         surface = content.read_surface(surface_file)
         surface = np.unique(surface)
         for i, point in enumerate(grid_points):
-            surface_points.append(self.find_surface_point(point, surface.tolist()))
-        return surface_points
+            surface_point, surface_point_index = self.find_surface_point(point, surface.tolist())
+            surface_points.append(surface_point)
+            surface_points_indices.append(surface_point_index)
+        return surface_points, surface_points_indices
 
 class HandManipulate:
     # @param file_name the abaqus.inp file name
@@ -90,6 +94,9 @@ class HandManipulate:
     def __init__(self, file_name, part):
         self.hand_part = part
         self.abaqus = manipulate_abaqus_file.ReadAbaqusInput(file_name)
+        
+    def return_abaqus(self):
+        return self.abaqus
         
     def __find_handtip__(self):
          
@@ -130,7 +137,6 @@ class HandManipulate:
         depth_ratio = 0.2
         time_period = self.abaqus.read_timeperiod(time_period_line)
         depth = (base - surface_point[1]) * depth_ratio
-        time_period = 1
         self.abaqus.set_boundary(boundary_line, time_period, direction, (depth + dist) / time_period)
         
     # @param assembly the content of the line that assembly start
@@ -193,9 +199,12 @@ class TetrahedralMesh:
             queue.append(s) 
             nodes = []
             self.visited[s] = True
+            point_limit = 1000
             while queue: 
                 s = queue.pop(0)
-                nodes.append(s)         
+                if len(nodes) > point_limit:
+                    break
+                nodes.append(s) 
                 for i in self.graph[s]:
                     if i not in self.visited.keys() or (self.visited[i] == False):                    
                         queue.append(i) 
@@ -302,7 +311,7 @@ class TetrahedralMesh:
         normal = np.cross(p2 - p1, p3 - p1)
         return np.dot(normal, point - p1) > 0
     
-    def build_triangle_graph(self):
+    def __build_triangle_graph__(self):
         for tri in self.triangles:
             self.graph.add_edge(tri[0], tri[1])
             self.graph.add_edge(tri[0], tri[2])
@@ -315,13 +324,24 @@ class TetrahedralMesh:
     def contact_points(self, point):
         return self.graph.BFS(point)
     
+    # find all tetrhedrons contain the point
+    # arguments:
+    # point: the index of the point in contact triangle
+    # returns:
+    # a list of tetrahedral indices
     def surface_tetrahedral(self, point):
+        self.__build_triangle_graph__()
+        self.__point_to_tetrahedral__()
         points = self.contact_points(point)
         tetrahedral_indices = []
         for point in points:
-            tetrahedral_indices.append(self.point_to_tet[node_index])
+            tetrahedral_indices.append(self.point_to_tet[point])  
+        return [j for sub in tetrahedral_indices for j in sub] 
     
-    def point_to_tetrahedral(self):
+    # set the mapping between a point and all tetreherons containt it
+    # arguments:
+    # point: the index of the point in contact triangle
+    def __point_to_tetrahedral__(self):
         tetrahedrons = self.tetrahedrons.tolist()
         for tet_index, tet in enumerate(tetrahedrons):
             for node_index in tet:
@@ -329,6 +349,7 @@ class TetrahedralMesh:
                     self.point_to_tet[node_index] = []
                 else:
                     self.point_to_tet[node_index].append(tet_index)
+                    
                         
 def test_graph(surface, node):
     g = TetrahedralMesh(surface, node).Graph()
@@ -345,17 +366,21 @@ def test_graph(surface, node):
                       " (starting from vertex 2)") 
     g.BFS(2) 
 
+def test_ReadAbaqusInput_delete_elset(filename, start_line):
+    delete_elset(start_line)
+    
 if __name__ == "__main__":
     node = 'Skin_Layer.node'
     element = 'Skin_Layer.ele'
     surface = 'Skin_Layer.face'
     abaqus_inp = 'Jobs/Job-4.inp'    
+    
     breast_info = GetInfoFromBreast(element, node)
     edge = breast_info.find_edge()
 
     hand_part = '*Part, name=Part-2\n'
     grids_positions = grid(edge[0][0], edge[1][0], edge[2][2], edge[3][2])
-    surface_points = breast_info.find_all_surface_point(grids_positions, surface)     
+    surface_points, surface_points_indices = breast_info.find_all_surface_point(grids_positions, surface)     
     
     hand = HandManipulate(abaqus_inp, hand_part)
     base = max([edge[0][1], edge[1][1], edge[2][1], edge[3][1]]) 
@@ -375,13 +400,18 @@ if __name__ == "__main__":
         directions.append(direc)
         distances.append(dist)
         print(i)
-        
-    for vec, direction, surface_point, distance in zip(trans_vector[0::50], directions, surface_points[0::50], distances):
+    
+    r_input = hand.return_abaqus()
+    elset = '*Elset, elset=_s_Surf-1_S1, internal, instance=PART-1-1\n'
+    
+    for vec, direction, surface_point, distance, surface_point_index in zip(trans_vector[0::50], directions, surface_points[0::50], distances, surface_points_indices[0::50]):
         hand.set_assembly(assembly, vec)
         boundary_arg = [boundary, time_period, direction, surface_point, base, distance]
         hand.set_boundary(boundary_arg)
+        r_input.delete_elset(elset)
+        contact_tets = np.unique(tetrahedral_mesh.surface_tetrahedral(surface_point_index))
+        r_input.add_to_elset(elset, contact_tets.tolist())
         hand.write_output('Jobs/' + str(index) + '.inp')
         index += 1
-                
-        
     
+        
