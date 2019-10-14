@@ -85,16 +85,8 @@ class ReadAbaqusInput:
     def read_timeperiod(self, start_line):
         index = self.return_insert_position(start_line)
         return float(self.contents[index + 1].strip().split(',')[1])
-    
-    # set element set in .inp
-    # arguments:
-    # start_line: the line that starts the element set
-    # element: a list of numbers  
-    def set_elset(self, start_line, element):
-        index = self.return_insert_position(start_line)
-        start = index + 1
         
-    def add_to_elset(self, start_line, numbers):
+    def add_to_elset_or_nset(self, start_line, numbers):
         index = self.return_insert_position(start_line)
         start = index + 1
         line = []
@@ -122,11 +114,12 @@ class ReadAbaqusInput:
                 self.contents.insert(start, line_str)
                 
     # delete the element set, but maintain the start line of the set    
-    def delete_elset(self, start_line):
+    def delete_elset_or_nset(self, start_line):
         index = self.return_insert_position(start_line)
         end = index + 1
         line = self.contents[end].strip().split(',')
         while line[0].isdigit():
             self.contents.pop(end)
             line = self.contents[end].strip().split(',')
-        
+    
+    
