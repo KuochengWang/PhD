@@ -64,7 +64,6 @@ class ReadAbaqusInput:
         self.contents[index + 1] = 'Set-6, 1, 1, ' + str(direction[0]) + '\n'
         self.contents[index + 2] = 'Set-6, 2, 2, ' + str(direction[1]) + '\n'
         self.contents[index + 3] = 'Set-6, 3, 3, ' + str(direction[2]) + '\n'
-        
     
     # return the translation vector, x, y, z, and the index of the line
     def read_assembly(self, start_line):
@@ -85,7 +84,9 @@ class ReadAbaqusInput:
     def read_timeperiod(self, start_line):
         index = self.return_insert_position(start_line)
         return float(self.contents[index + 1].strip().split(',')[1])
-        
+    
+    # return:
+    # a list of strings
     def add_to_elset_or_nset(self, start_line, numbers):
         index = self.return_insert_position(start_line)
         start = index + 1
@@ -112,14 +113,29 @@ class ReadAbaqusInput:
                 line_str = line_str + ',' + str(li + 1) + '\n'
                 line_str = line_str[1:]
                 self.contents.insert(start, line_str)
-                
-    # delete the element set, but maintain the start line of the set    
-    def delete_elset_or_nset(self, start_line):
+    
+    # returns:
+    # line : a list of strings
+    # index: the index of the first line that contain numbers
+    def firstline_elset_or_nset(self, start_line):
         index = self.return_insert_position(start_line)
         end = index + 1
         line = self.contents[end].strip().split(',')
+        return line, end
+    
+    # delete the element set, but maintain the start line of the elset or nset    
+    def delete_elset_or_nset(self, start_line):
+        line, end = self.firstline_elset_or_nset(start_line)
         while line[0].isdigit():
             self.contents.pop(end)
             line = self.contents[end].strip().split(',')
     
-    
+    def read_elset_or_nset(self, start_line):
+        line, index = self.firstline_elset_or_nset(start_line)
+        values = []
+        while line[0].isdigit():
+            for num in line:
+                values.append(int(num))
+            index += 1
+            line = self.contents[index].strip().split(',')
+        return values
