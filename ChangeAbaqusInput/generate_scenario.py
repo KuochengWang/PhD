@@ -27,10 +27,10 @@ def angle_between(v1, v2):
 def find_direction(hand_pos, tetrahedral_mesh):          
     keys = list(range(1, 28))
     random.shuffle(keys)    
-    closest_point = tetrahedral_mesh.closest_triangle_point(hand_pos)
+    closest_point,  closest_point_index = tetrahedral_mesh.closest_triangle_point(hand_pos)
     direction = closest_point - hand_pos
     dist = np.sum(np.abs(direction)**2,axis=-1)**(1./2)
-    return  direction, dist
+    return  direction, dist, closest_point_index
                     
 class GetInfoFromBreast:
     def __init__(self, elementfile, nodefile):
@@ -188,7 +188,7 @@ class TetrahedralMesh:
     class Graph:
         def __init__(self):  
             self.graph = defaultdict(list) 
-            self.visited = dict()            
+                      
             
         def add_edge(self,u,v): 
             self.graph[u].append(v) 
@@ -198,7 +198,8 @@ class TetrahedralMesh:
             queue = [] 
             queue.append(s) 
             nodes = []
-            self.visited[s] = True
+            visited = dict() 
+            visited[s] = True
             point_limit = 1000
             while queue: 
                 s = queue.pop(0)
@@ -206,9 +207,9 @@ class TetrahedralMesh:
                     break
                 nodes.append(s) 
                 for i in self.graph[s]:
-                    if i not in self.visited.keys() or (self.visited[i] == False):                    
+                    if i not in visited.keys() or (visited[i] == False):                    
                         queue.append(i) 
-                        self.visited[i] = True
+                        visited[i] = True
             return nodes
             
     def __init__(self, tet_file, triangle_file, node_file):
@@ -296,7 +297,7 @@ class TetrahedralMesh:
         temp_dist = np.array(triangle_points) - point
         dist = np.sum(np.abs(temp_dist)**2,axis=-1)**(1./2)
         min_dist_index = (list(dist)).index(min(dist))
-        return self.nodes[min_dist_index]
+        return self.nodes[min_dist_index], min_dist_index
     
     # find which side of the triangle the point lies in
     # arguments:
@@ -393,23 +394,25 @@ if __name__ == "__main__":
     
     directions = []
     distances = []
+    closest_point_indices = []
     tetrahedral_mesh = TetrahedralMesh(element, surface, node)
    
     for i, vec in enumerate(trans_vector[0::50]):
-        direc, dist = find_direction(hand_tip + vec, tetrahedral_mesh)
+        direc, dist, closest_point_index = find_direction(hand_tip + vec, tetrahedral_mesh)
         directions.append(direc)
         distances.append(dist)
+        closest_point_indices.append(closest_point_index)
         print(i)
     
     r_input = hand.return_abaqus()
     elset = '*Elset, elset=_s_Surf-1_S1, internal, instance=PART-1-1\n'
     
-    for vec, direction, surface_point, distance, surface_point_index in zip(trans_vector[0::50], directions, surface_points[0::50], distances, surface_points_indices[0::50]):
+    for vec, direction, surface_point, distance, closest_point_index in zip(trans_vector[0::50], directions, surface_points[0::50], distances, closest_point_indices):
         hand.set_assembly(assembly, vec)
         boundary_arg = [boundary, time_period, direction, surface_point, base, distance]
         hand.set_boundary(boundary_arg)
         r_input.delete_elset(elset)
-        contact_tets = np.unique(tetrahedral_mesh.surface_tetrahedral(surface_point_index))
+        contact_tets = np.unique(tetrahedral_mesh.surface_tetrahedral(closest_point_index))
         r_input.add_to_elset(elset, contact_tets.tolist())
         hand.write_output('Jobs/' + str(index) + '.inp')
         index += 1
