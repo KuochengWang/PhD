@@ -323,6 +323,8 @@ class TetrahedralMesh:
     # returns:
     # a list of points on the contact surface in breast    
     def contact_points(self, point):
+        self.__build_triangle_graph__()
+        self.__point_to_tetrahedral__()
         return self.graph.BFS(point)
     
     # find all tetrhedrons contain the point
@@ -331,8 +333,6 @@ class TetrahedralMesh:
     # returns:
     # a list of tetrahedral indices
     def surface_tetrahedral(self, point):
-        self.__build_triangle_graph__()
-        self.__point_to_tetrahedral__()
         points = self.contact_points(point)
         tetrahedral_indices = []
         for point in points:
@@ -374,22 +374,21 @@ if __name__ == "__main__":
     node = 'Skin_Layer.node'
     element = 'Skin_Layer.ele'
     surface = 'Skin_Layer.face'
-    abaqus_inp = 'Jobs/Job-4.inp'    
+    abaqus_inp = 'Jobs/surface_to_node.inp'    
     
     breast_info = GetInfoFromBreast(element, node)
     edge = breast_info.find_edge()
 
-    hand_part = '*Part, name=Part-2\n'
+    hand_part = '*Part, name=PART-2\n'
     grids_positions = grid(edge[0][0], edge[1][0], edge[2][2], edge[3][2])
     surface_points, surface_points_indices = breast_info.find_all_surface_point(grids_positions, surface)     
-    
     hand = HandManipulate(abaqus_inp, hand_part)
-    base = max([edge[0][1], edge[1][1], edge[2][1], edge[3][1]]) 
+    base = max([edge[0][1], edge[1][1], edge[2][1], edge[3][1]])
     hand_tip, trans_vector = hand.move_hand_to_surface(surface_points, (edge[0] + edge[1] + edge[2] + edge[3]) / 4)
     
-    boundary = '*Boundary, amplitude=Amp-1\n'
-    time_period = '*Amplitude, name=Amp-1, time=TOTAL TIME, definition=EQUALLY SPACED, fixed interval=1.\n'
-    assembly = '*Instance, name=Part-2-1, part=Part-2\n'
+    boundary = '*Boundary, amplitude=AMP-1\n'
+    time_period = '*Amplitude, name=AMP-1, time=TOTAL TIME, definition=EQUALLY SPACED, fixed interval=1.\n'
+    assembly = '*Instance, name=PART-2-1, part=PART-2\n'
     index = 0
     
     directions = []
@@ -405,15 +404,16 @@ if __name__ == "__main__":
         print(i)
     
     r_input = hand.return_abaqus()
-    elset = '*Elset, elset=_s_Surf-1_S1, internal, instance=PART-1-1\n'
+    
+    nset = '*Nset, nset=s_Set-12, instance=PART-1-1\n'
     
     for vec, direction, surface_point, distance, closest_point_index in zip(trans_vector[0::50], directions, surface_points[0::50], distances, closest_point_indices):
         hand.set_assembly(assembly, vec)
         boundary_arg = [boundary, time_period, direction, surface_point, base, distance]
         hand.set_boundary(boundary_arg)
-        r_input.delete_elset(elset)
-        contact_tets = np.unique(tetrahedral_mesh.surface_tetrahedral(closest_point_index))
-        r_input.add_to_elset(elset, contact_tets.tolist())
+        contact_ps = tetrahedral_mesh.contact_points(closest_point_index)
+        r_input.delete_elset_or_nset(nset)
+        r_input.add_to_elset_or_nset(nset, contact_ps)
         hand.write_output('Jobs/' + str(index) + '.inp')
         index += 1
     
