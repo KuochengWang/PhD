@@ -351,6 +351,11 @@ class TetrahedralMesh:
                 else:
                     self.point_to_tet[node_index].append(tet_index)
                     
+    # exclude nodeset n2 from n1
+    # arguments:
+    # n1, n2, both are a list of int
+    def exclude_node_set(self, n1, n2):
+        return list(set(n1) - set(n2))
                         
 def test_graph(surface, node):
     g = TetrahedralMesh(surface, node).Graph()
@@ -396,7 +401,7 @@ if __name__ == "__main__":
     closest_point_indices = []
     tetrahedral_mesh = TetrahedralMesh(element, surface, node)
    
-    for i, vec in enumerate(trans_vector[0::50]):
+    for i, vec in enumerate(trans_vector):
         direc, dist, closest_point_index = find_direction(hand_tip + vec, tetrahedral_mesh)
         directions.append(direc)
         distances.append(dist)
@@ -404,10 +409,10 @@ if __name__ == "__main__":
         print(i)
     
     r_input = hand.return_abaqus()
-    
     nset = '*Nset, nset=s_Set-12, instance=PART-1-1\n'
-    
-    for vec, direction, surface_point, distance, closest_point_index in zip(trans_vector[0::50], directions, surface_points[0::50], distances, closest_point_indices):
+    encastre = '*Nset, nset=SET-4, instance=PART-1-1\n' 
+    encastre_points = r_input.read_elset_or_nset(encastre)
+    for vec, direction, surface_point, distance, closest_point_index in zip(trans_vector, directions, surface_points, distances, closest_point_indices):
         hand.set_assembly(assembly, vec)
         boundary_arg = [boundary, time_period, direction, surface_point, base, distance]
         hand.set_boundary(boundary_arg)
@@ -416,5 +421,4 @@ if __name__ == "__main__":
         r_input.add_to_elset_or_nset(nset, contact_ps)
         hand.write_output('Jobs/' + str(index) + '.inp')
         index += 1
-    
         
