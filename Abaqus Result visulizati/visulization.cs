@@ -4,9 +4,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
-public class visulization : MonoBehaviour {
+public class visulization : MonoBehaviour
+{
 
-	// Use this for initialization
+    // Use this for initialization
     Mesh mesh;
     List<Vector3> vertices;
     List<int> triangles;
@@ -16,36 +17,36 @@ public class visulization : MonoBehaviour {
         gameObject.AddComponent<MeshFilter>();
         gameObject.AddComponent<MeshRenderer>();
         mesh = GetComponent<MeshFilter>().mesh;
-        gameObject.GetComponent<Renderer>().material = Resources.Load("breast", typeof(Material)) as Material;  
+        gameObject.GetComponent<Renderer>().material = Resources.Load("breast", typeof(Material)) as Material;
         triangles = new List<int>();
         mesh.Clear();
-        vertices = buildVertexMesh("breast_model/breastshellnode.txt", 1f);
-        buildFaceMesh("breast_model/breastshellelement.txt");
-        List<Vector3> disp = BuildDisp("breast_model/train2968.txt");
-        Debug.Log(disp.Count);
-        Debug.Log(vertices.Count);
+        vertices = buildVertexMesh("patient specific_breast_model/Skin_Layer_unity.node", 1f);
+        buildFaceMesh("patient specific_breast_model/Skin_Layer_unity.face");
+        List<Vector3> disp = BuildDisp("patient specific_breast_model/278_3.txt");
         List<Vector3> verticesAfterDisp = MoveVertices(vertices, disp);
+        Debug.Log(vertices.Count + " " + disp.Count);
         mesh.vertices = verticesAfterDisp.ToArray();
         mesh.triangles = triangles.ToArray();
+        mesh.RecalculateNormals();
         hand = GameObject.Find("hand");
-        PrintMaxDisp(verticesAfterDisp, disp);
         Color[] colors = new Color[mesh.vertices.Length];
         for (int i = 0; i < mesh.vertices.Length; i++)
         {
             colors[i].r = UnityEngine.Random.Range(0.5f, 1.0f); //((float)i / mesh.vertices.Length);
             colors[i].b = 0f;
             colors[i].g = 0f;
-            //   colors[i] = new Color(0.3f, 0.4f, 0.6f, 0.3f);
+          //  colors[i] = new Color(0.3f, 0.4f, 0.6f, 0.3f);
         }
         mesh.colors = colors;
-        
+
     }
-	
-	
-	// Update is called once per frame
-	void Update () {
-		
-	}
+
+
+    // Update is called once per frame
+    void Update()
+    {
+
+    }
 
     private List<Vector3> buildVertexMesh(string nodeFile, float scale)
     {
@@ -76,32 +77,31 @@ public class visulization : MonoBehaviour {
         {
             string[] arr;
             arr = text.Split(' ');
-            
-            triangles.Add(int.Parse(arr[0])-1);
-            triangles.Add(int.Parse(arr[1])-1);
-            triangles.Add(int.Parse(arr[2])-1);
+
+            triangles.Add(int.Parse(arr[0]));
+            triangles.Add(int.Parse(arr[2]));
+            triangles.Add(int.Parse(arr[1]));            
             text = reader.ReadLine();
         }
-
         reader.Close();
     }
 
-    private List<Vector3> BuildDisp (string disp)
+    private List<Vector3> BuildDisp(string disp)
     {
         float scale = 1f;
-        return buildVertexMesh(disp,scale) ; 
+        return buildVertexMesh(disp, scale);
     }
 
-    private StreamReader Reader (string surfaceFile)
+    private StreamReader Reader(string surfaceFile)
     {
         FileInfo theSourceFile = null;
-        StreamReader reader = null;   
+        StreamReader reader = null;
         theSourceFile = new FileInfo(surfaceFile);
         reader = theSourceFile.OpenText();
         return reader;
     }
 
-    private List<Vector3> MoveVertices (List<Vector3> verts, List<Vector3> disp)
+    private List<Vector3> MoveVertices(List<Vector3> verts, List<Vector3> disp)
     {
         List<Vector3> verticesAfterDisp = new List<Vector3>();
         for (int i = 0; i < verts.Count(); i++)
@@ -117,15 +117,15 @@ public class visulization : MonoBehaviour {
         int index = 0;
         double ymax = 0;
         int indexYmax = 0;
-        for(int i=0; i < verts.Count; i++)
+        for (int i = 0; i < verts.Count; i++)
         {
             Vector3 temp = disp[i];
-            if(temp.magnitude > max)
+            if (temp.magnitude > max)
             {
                 max = temp.magnitude;
                 index = i;
             }
-            if(disp[i].y > ymax)
+            if (disp[i].y > ymax)
             {
                 ymax = disp[i].y;
                 indexYmax = i;
