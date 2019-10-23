@@ -41,19 +41,33 @@ class ReadAbaqusInput:
     
     # read the coordinate from the contents
     # @param start_index the starting line to read the file
-    def __read_coordinates__(self, start_index):
+    # @param elem_or_coord a flag starting whether reading coord or element
+    def __read_coordinates__(self, start_index, elem_or_coord):
         coords = []
         for index, coord in enumerate(self.contents[start_index:-1]):
             coord = coord.strip().split(',')
             if not coord[0].isdigit():
                 break
-            coords.append([float(coord[1]), float(coord[2]), float(coord[3])])
+            if elem_or_coord == 'coordinate':
+                coords.append([float(coord[1]), float(coord[2]), float(coord[3])])
+            elif elem_or_coord == 'element':
+                coords.append([int(coord[1]), int(coord[2]), int(coord[3]), int(coord[4])])
         return coords
     
     # find all content 
     def read_part(self, part):
         index = self.return_insert_position(part)
-        return self.__read_coordinates__(index + 2)
+        return self.__read_coordinates__(index + 2, 'coordinate')
+    
+    # read all the node indexes from element
+    #reutrun:
+    # a list of list with 4 numbers
+    def read_element(self, part):
+        part_index = self.return_insert_position(part)
+        coords = self.read_part(part)
+        elem_index = part_index + len(coords) + 3
+        elems = self.__read_coordinates__(elem_index, 'element')
+        return elems
     
     # change the boundary condition
     # @param start_line the enrire line string that boundary start with 
