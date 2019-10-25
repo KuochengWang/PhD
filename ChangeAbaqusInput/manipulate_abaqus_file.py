@@ -127,6 +127,7 @@ class ReadAbaqusInput:
                 line_str = line_str + ',' + str(li + 1) + '\n'
                 line_str = line_str[1:]
                 self.contents.insert(start, line_str)
+            
     
     # returns:
     # line : a list of strings
