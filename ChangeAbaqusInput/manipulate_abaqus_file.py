@@ -168,3 +168,15 @@ class ReadAbaqusInput:
         index = self.return_insert_position(part) + 2 + point_index
         self.contents[index] = str(point_index + 1) + ',' + point
         
+    # change the direction of gravity
+    # args:
+    # gravity: the start line of gravity
+    # direction: the 3D vector that describle the gravity direction 
+    # magnitude: the magnitude of the gravity
+    def change_gravity(self, gravity, direction, magnitude):
+        index = self.return_insert_position(gravity) + 2
+        line = self.contents[index].strip().split(',')
+        x, y, z = direction
+        new_line = line[0] + ',' + line[1] + ','+ str(magnitude) + ',' + \
+                   str(x) + ',' + str(y) + ',' + str(z) + '\n'
+        self.contents[index] = new_line
