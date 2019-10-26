@@ -42,6 +42,8 @@ class ReadAbaqusInput:
     # read the coordinate from the contents
     # @param start_index the starting line to read the file
     # @param elem_or_coord a flag starting whether reading coord or element
+    # return:
+    # a list of 3D points
     def __read_coordinates__(self, start_index, elem_or_coord):
         coords = []
         for index, coord in enumerate(self.contents[start_index:-1]):
@@ -54,7 +56,9 @@ class ReadAbaqusInput:
                 coords.append([int(coord[1]), int(coord[2]), int(coord[3]), int(coord[4])])
         return coords
     
-    # find all content 
+    # find all node coordi
+    # return:
+    # a list of 3D points
     def read_part(self, part):
         index = self.return_insert_position(part)
         return self.__read_coordinates__(index + 2, 'coordinate')
@@ -154,3 +158,13 @@ class ReadAbaqusInput:
             index += 1
             line = self.contents[index].strip().split(',')
         return values
+    
+    # change the part position based on the index of the point
+    # args:
+    # part: the start line of the part 
+    # point_index: the index of the point, index start from 0
+    # point: the 3D position of the new point, string format
+    def edit_part(self, part, point_index, point):
+        index = self.return_insert_position(part) + 2 + point_index
+        self.contents[index] = str(point_index + 1) + ',' + point
+        
