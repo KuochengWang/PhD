@@ -1,11 +1,17 @@
+import argparse
 from collections import defaultdict
 import manipulate_abaqus_file
 import math
 import numpy as np
 import pdb
-import random
 import read_tetgen
 import sys
+
+# This script generate all .inp files with different position of hand and moving
+# directions
+
+# in order to run, python generate_scenario.py --scenario=palpation
+#                  python generate_scenario.py --scenario=gravity
 
 HAND_DIRECTION = [0, 1, -1]
 VERTICLE_DIRECTION = [0, 1, 0]
@@ -24,9 +30,7 @@ def angle_between(v1, v2):
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)) * 180 / math.pi
     
 # find direction to move hand to palpate breast
-def find_direction(hand_pos, tetrahedral_mesh):          
-    keys = list(range(1, 28))
-    random.shuffle(keys)    
+def find_direction(hand_pos, tetrahedral_mesh):             
     closest_point,  closest_point_index = tetrahedral_mesh.closest_triangle_point(hand_pos)
     direction = closest_point - hand_pos
     dist = np.sum(np.abs(direction)**2,axis=-1)**(1./2)
@@ -76,12 +80,38 @@ class GetInfoFromBreast:
                 tolerace += 1
         return surface_point, surface_point_index
     
-    def find_all_surface_point(self, grid_points, surface_file):
+    # return a numpy array of unique face indices
+    def __read_face_indices__(self, surface_file):
         surface_points = []
         surface_points_indices = []
         content = read_tetgen.ReadTetGen('', '')
         surface = content.read_surface(surface_file)
         surface = np.unique(surface)
+        return surface
+    
+    def read_face_points(self, surface_file):
+        surface_indices = self.__read_face_indices__(surface_file)
+        points = []
+        for index in surface_indices:
+            points.append(self.coordinates[index])
+        return points
+    
+    def find_center(self, surface_file):
+        surface_points = self.read_face_points(surface_file)
+        return np.mean(surface_points, axis=0)
+    
+    def set_assembly(self, file_name, vec, start_line):
+        abaqus = manipulate_abaqus_file.ReadAbaqusInput(file_name)
+        abaqus.set_assembly(start_line, vec)
+            
+    # find surface point closest to points specified
+    # args:
+    # grid_points: a list of 3D points
+    # surface_file: the name of the surface file produced by TetGen
+    # return:
+    # a list of surface points and their indices
+    def find_all_surface_point(self, grid_points, surface_file):
+        surface = self.__read_face_indices__(surface_file)
         for i, point in enumerate(grid_points):
             surface_point, surface_point_index = self.find_surface_point(point, surface.tolist())
             surface_points.append(surface_point)
@@ -105,7 +135,6 @@ class HandManipulate:
         result = np.where(np.max(hand_y) == hand_y)
         ymax_index = result[0][0]
         hand_tip = hand_points[ymax_index]
-        
         return hand_tip
     
     # move hand to the surface based on surface points
@@ -381,44 +410,72 @@ if __name__ == "__main__":
     surface = 'Skin_Layer.face'
     abaqus_inp = 'Jobs/surface_to_node.inp'    
     
-    breast_info = GetInfoFromBreast(element, node)
-    edge = breast_info.find_edge()
-
-    hand_part = '*Part, name=PART-2\n'
-    grids_positions = grid(edge[0][0], edge[1][0], edge[2][2], edge[3][2])
-    surface_points, surface_points_indices = breast_info.find_all_surface_point(grids_positions, surface)     
-    hand = HandManipulate(abaqus_inp, hand_part)
-    base = max([edge[0][1], edge[1][1], edge[2][1], edge[3][1]])
-    hand_tip, trans_vector = hand.move_hand_to_surface(surface_points, (edge[0] + edge[1] + edge[2] + edge[3]) / 4)
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument('--scenario', help='generate palpation or gravity scenario.', type=str)
+    args = arg_parser.parse_args()
+    scenario = args.scenario
+    if scenario == 'palpation':
+        breast_info = GetInfoFromBreast(element, node)
+        edge = breast_info.find_edge()
     
-    boundary = '*Boundary, amplitude=AMP-1\n'
-    time_period = '*Amplitude, name=AMP-1, time=TOTAL TIME, definition=EQUALLY SPACED, fixed interval=1.\n'
-    assembly = '*Instance, name=PART-2-1, part=PART-2\n'
-    index = 0
-    
-    directions = []
-    distances = []
-    closest_point_indices = []
-    tetrahedral_mesh = TetrahedralMesh(element, surface, node)
-   
-    for i, vec in enumerate(trans_vector):
-        direc, dist, closest_point_index = find_direction(hand_tip + vec, tetrahedral_mesh)
-        directions.append(direc)
-        distances.append(dist)
-        closest_point_indices.append(closest_point_index)
-        print(i)
-    
-    r_input = hand.return_abaqus()
-    nset = '*Nset, nset=s_Set-12, instance=PART-1-1\n'
-    encastre = '*Nset, nset=SET-4, instance=PART-1-1\n' 
-    encastre_points = r_input.read_elset_or_nset(encastre)
-    for vec, direction, surface_point, distance, closest_point_index in zip(trans_vector, directions, surface_points, distances, closest_point_indices):
-        hand.set_assembly(assembly, vec)
-        boundary_arg = [boundary, time_period, direction, surface_point, base, distance]
-        hand.set_boundary(boundary_arg)
-        contact_ps = tetrahedral_mesh.contact_points(closest_point_index)
-        r_input.delete_elset_or_nset(nset)
-        r_input.add_to_elset_or_nset(nset, contact_ps)
-        hand.write_output('Jobs/' + str(index) + '.inp')
-        index += 1
+        hand_part = '*Part, name=PART-2\n'
+        grids_positions = grid(edge[0][0], edge[1][0], edge[2][2], edge[3][2])
+        surface_points, surface_points_indices = breast_info.find_all_surface_point(grids_positions, surface)     
+        hand = HandManipulate(abaqus_inp, hand_part)
+        base = max([edge[0][1], edge[1][1], edge[2][1], edge[3][1]])
+        hand_tip, trans_vector = hand.move_hand_to_surface(surface_points, (edge[0] + edge[1] + edge[2] + edge[3]) / 4)
         
+        boundary = '*Boundary, amplitude=AMP-1\n'
+        time_period = '*Amplitude, name=AMP-1, time=TOTAL TIME, definition=EQUALLY SPACED, fixed interval=1.\n'
+        assembly = '*Instance, name=PART-2-1, part=PART-2\n'
+        index = 0
+        
+        directions = []
+        distances = []
+        closest_point_indices = []
+        tetrahedral_mesh = TetrahedralMesh(element, surface, node)
+       
+        for i, vec in enumerate(trans_vector):
+            direc, dist, closest_point_index = find_direction(hand_tip + vec, tetrahedral_mesh)
+            directions.append(direc)
+            distances.append(dist)
+            closest_point_indices.append(closest_point_index)
+            print(i)
+        
+        r_input = hand.return_abaqus()
+        nset = '*Nset, nset=s_Set-12, instance=PART-1-1\n'
+        encastre = '*Nset, nset=SET-4, instance=PART-1-1\n' 
+        encastre_points = r_input.read_elset_or_nset(encastre)
+        for vec, direction, surface_point, distance, closest_point_index in zip(trans_vector, directions, surface_points, distances, closest_point_indices):
+            hand.set_assembly(assembly, vec)
+            boundary_arg = [boundary, time_period, direction, surface_point, base, distance]
+            hand.set_boundary(boundary_arg)
+            contact_ps = tetrahedral_mesh.contact_points(closest_point_index)
+            r_input.delete_elset_or_nset(nset)
+            r_input.add_to_elset_or_nset(nset, contact_ps)
+            hand.write_output('Jobs/' + str(index) + '.inp')
+            index += 1
+        
+    if  scenario == 'gravity':
+       breast_info = GetInfoFromBreast(element, node)
+       
+     #  center = breast_info.find_center(surface)
+     #  set_assembly(self, file_name, vec, start_line)
+       inp_file = 'Weight Jobs/reference_pos.inp'
+       gravity = '** Name: GRAVITY-1   Type: Gravity\n'
+       output_folder = 'Weight Jobs'
+       abaqus = manipulate_abaqus_file.ReadAbaqusInput(inp_file)
+       angle_interval = 5 # 5 degree 
+       circle_angle = 360
+       angles = np.linspace(start = 0, stop = circle_angle, num = circle_angle / angle_interval + 1)
+       gravity_magnitude = 9810
+       for angle in list(angles):
+           z = math.cos(math.radians(angle)) 
+           y = math.sin(math.radians(angle)) 
+           direction = [0, z, y]
+           
+           abaqus.change_gravity(gravity, direction, gravity_magnitude)
+           file_name = inp_file.split('/')[-1]
+           file_name = file_name.split('.')[0]
+           file_name += '_z_' + 'y_' + str(int(angle)) + '.inp'
+           abaqus.write_output(output_folder + '/' + file_name)
