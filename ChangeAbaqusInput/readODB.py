@@ -1,14 +1,18 @@
 from convert_tetgen_to_unity import write_to_file
+import glob
 import manipulate_abaqus_file
+import math
 import numpy as np
 import odbAccess
 from odbAccess import openOdb
 import os
 import pdb
+import manipulate_abaqus_file
 import read_tetgen
 import sys 
 
 # to run: abaqus python readODB.py unload
+# abaqus python readODB.py weight
 
 class ReadOdb:
     # arguments:
@@ -145,6 +149,14 @@ def find_centers(inp_file, eleset, odb_reader, step_name, part, part_start):
         positions_across_frame.append(np.array(start) - np.array(end))
     pdb.set_trace()
 
+def read_lastframe(file_name, step, part):
+    odb = openOdb(file_name)
+    frame_num = -1
+    odb_reader = ReadOdb(file_name)
+    args = [odb, step, part, frame_num]
+    disps = odb_reader.read_frame(args) 
+    return disps
+
 if __name__ == "__main__": 
     odb_files = ['278.odb']
     breast_step = 'Step-1'
@@ -170,11 +182,7 @@ if __name__ == "__main__":
         inp_output_folder = 'Weight Jobs'
         inp_file = 'F:/Research/Breast with weight/real_skin/reference_pos.inp'
         for file in odb_files:
-            odb = openOdb(file)
-            frame_num = -1
-            odb_reader = ReadOdb(file)
-            args = [odb, breast_step, breast_part, frame_num]
-            disps = odb_reader.read_frame(args)  
+            disps = read_lastframe(file, breast_step, breast_part) 
             file_name = file.split('/')[-1]
             file_name = output_folder + '\/' + file_name.split('.')[0] + '.txt'                
             write_to_file(file_name, disps, 'write')
@@ -186,3 +194,11 @@ if __name__ == "__main__":
                 file_name = file.split('/')[-1]
                 file_name = inp_output_folder + '/' + file_name.split('.')[0] + '.inp'
             abaqus.write_output(file_name)
+    
+    if purpose == 'weight':
+        odb_files = glob.glob('Abaqus_outputs/weight/*odb')
+        for file in odb_files:
+            disps = read_lastframe(file, breast_step, breast_part) 
+            file_name = os.path.basename(file)
+            file_name = os.path.join(output_folder, file_name.split('.')[0] + '.txt')
+            write_to_file(file_name, disps, 'write')
