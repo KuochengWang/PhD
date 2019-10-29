@@ -180,3 +180,25 @@ class ReadAbaqusInput:
         new_line = line[0] + ',' + line[1] + ','+ str(magnitude) + ',' + \
                    str(x) + ',' + str(y) + ',' + str(z) + '\n'
         self.contents[index] = new_line
+        
+    # read magnitude and direction of the gravity
+    # args:
+    # gravity: the start line of gravity
+    def read_gravity(self, gravity):
+        index = self.return_insert_position(gravity) + 2
+        line = self.contents[index].strip().split(',')
+        magnitude = float(line[2])
+        direction = [float(line[3]), float(line[4]), float(line[5])]
+        return magnitude, direction
+    
+    # edit the density of a material
+    def change_density(self, start_line, new_density):
+        index = self.return_insert_position(start_line) + 2
+        self.contents[index] = str(new_density) + ',' + '\n'
+        
+    # edit elsticity of mooney-rivlin material
+    # args:
+    # material_start_line: use the material starting line as hint
+    def change_elsticity(self, material_start_line, new_elasticity):
+        index = self.return_insert_position(material_start_line) + 4
+        self.contents[index] = str(new_elasticity) + ',0,0\n'
