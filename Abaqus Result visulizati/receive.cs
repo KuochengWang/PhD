@@ -16,15 +16,19 @@ public class receive : MonoBehaviour
     private Mesh mesh;
     private List<Vector3> vertices;
     private List<int> triangles;
-    private int[] triangles_unique;
+    private int[] trianglesUnique;
     List<Vector3> disp;
     public string IP = "127.0.0.1"; //
     public int Port = 25001;
     public byte[] sendData;
     public Socket client;
     private float scale = 1f;
-    Vector3 needlePos;
+    private float yaw;
+    private Vector3 needlePos;
     GameObject needle;
+    private Vector3 breastCenter;
+    public float arrowOffset = 50f; // height for arrow
+
     void Start()
     {
         gameObject.AddComponent<MeshFilter>();
@@ -36,9 +40,9 @@ public class receive : MonoBehaviour
         buildFaceMesh("Breast/Skin_Layer.face");
         mesh.vertices = vertices.ToArray();
         mesh.triangles = triangles.ToArray();
-        triangles_unique = triangles.Distinct().ToArray();
-        Array.Sort(triangles_unique);
-        Debug.Log(triangles_unique.Length);
+        trianglesUnique = triangles.Distinct().ToArray();
+        Array.Sort(trianglesUnique);
+        Debug.Log(trianglesUnique.Length);
         Color[] colors = new Color[mesh.vertices.Length];
         for (int i = 0; i < mesh.vertices.Length; i++)
         {
@@ -49,14 +53,22 @@ public class receive : MonoBehaviour
         }
         mesh.colors = colors;
         mesh.RecalculateNormals();
-        needle = GameObject.Find("needle");        
+        needle = GameObject.Find("needle");
+        yaw = 0f;
+        breastCenter = calculateCenter(vertices);
+      //  transform.Translate(-breastCenter);
     }
 
     // Update is called once per frame
     void Update()
     {
-        float angle = 25;
-        Vector3 direction = new Vector3(Mathf.Cos(angle * Mathf.Deg2Rad), Mathf.Sin(angle * Mathf.Deg2Rad), 0);
+       // if(Input.GetKey("up"))
+        {
+            yaw += 2;
+         //   transform.RotateAround(breastCenter, Vector3.forward, 2); // rotate around its own center
+            
+        }
+        Vector3 direction = new Vector3(Mathf.Cos(yaw * Mathf.Deg2Rad), Mathf.Sin(yaw * Mathf.Deg2Rad), 0);
         Vector3 displacement = new Vector3(-7f, -6f, -2f);
         needlePos = vertices[1650];
         // needle.transform.localPosition = needlePos;
@@ -65,11 +77,46 @@ public class receive : MonoBehaviour
         Prediction(direction);
         double timeAfter = Time.realtimeSinceStartup;      
         mesh.RecalculateNormals();
+        GameObject.Find("ArrayStart").transform.position = breastCenter + Vector3.down * arrowOffset;
+        GameObject.Find("ArrayEnd").transform.position = breastCenter + Vector3.down * arrowOffset + direction * 2;
     }
 
     void OnGUI()
     {
         GUI.Label(new Rect(0, 0, 100, 100), (1f / Time.smoothDeltaTime).ToString());
+    }
+
+    private Vector3 calculateCenter(List<Vector3> verts)
+    {
+        Vector3 center = Vector3.zero;
+        for(int i = 0; i < verts.Count; i++)
+        {
+            center += verts[i];
+        }
+        return center / verts.Count;
+    }
+
+    // To show the lines in the game window whne it is running
+    void OnPostRender()
+    {
+         Vector3 direction = new Vector3(Mathf.Cos(yaw * Mathf.Deg2Rad), Mathf.Sin(yaw * Mathf.Deg2Rad), 0);
+         drawLine(breastCenter, direction * 100);
+    }
+
+    // To show the lines in the editor
+    void OnDrawGizmos()
+    {
+        Vector3 direction = new Vector3(Mathf.Cos(yaw * Mathf.Deg2Rad), Mathf.Sin(yaw * Mathf.Deg2Rad), 0);
+        drawLine(breastCenter, direction * 100);
+    }
+
+    private void drawLine(Vector3 lineStart, Vector3 lineEnd)
+    {
+        GL.Begin(GL.LINES);
+        GL.Color(new Color(0, 100, 100));
+        GL.Vertex3(lineStart.x, lineStart.y, lineStart.z);
+        GL.Vertex3(lineEnd.x, lineEnd.y, lineEnd.z);
+        GL.End();
     }
 
     private List<Vector3> buildVertexMesh(string nodeFile)
@@ -152,7 +199,7 @@ public class receive : MonoBehaviour
         List<Vector3> verticesAfterDisp = new List<Vector3>(vertices);
         for (int i = 0; i < indices.Count; i++)
         {
-            int vertex_index = triangles_unique[indices[i]];
+            int vertex_index = trianglesUnique[indices[i]];
             verticesAfterDisp[vertex_index] = (vertices[vertex_index] + disp[i]);
         }
         return verticesAfterDisp;
@@ -187,14 +234,12 @@ public class receive : MonoBehaviour
                 float z = float.Parse(words[i + 3]) * scale;
                 disp.Add(new Vector3(x, y, z));
                 indices.Add(index);
-                if (i == 0)
-                    Debug.Log(index + " " + x + " " + y + " " + z);
             }
             List<Vector3> verticesAfterDisp = MoveVerticesThreshold(vertices, disp, indices);
             mesh.vertices = verticesAfterDisp.ToArray();
             Debug.Log("Getting data from Python " + words.Length);
-            Debug.Log("Start: " + words[0]);
-            Debug.Log("End: " + words[words.Length - 5]);
+         //   Debug.Log("Start: " + words[0]);
+         //   Debug.Log("End: " + words[words.Length - 5]);
         }
         else
         {
@@ -211,7 +256,7 @@ public class receive : MonoBehaviour
         sendData = System.Text.Encoding.ASCII.GetBytes(needleTip[0].ToString("G4") + "," + needleTip[1].ToString("G4") + "," + needleTip[2].ToString("G4") + "," + pointPos[0].ToString("G4") + "," + pointPos[1].ToString("G4") + "," + pointPos[2].ToString("G4"));
         double timeBeforeTotal = Time.realtimeSinceStartup;
         client.Send(sendData);
-        byte[] b = new byte[(int)Mathf.Pow(2, 18f)];
+        byte[] b = new byte[(int)Mathf.Pow(2, 19f)];
         double timeBefore = Time.realtimeSinceStartup;
         int k = client.Receive(b);
         double timeAfter = Time.realtimeSinceStartup;
@@ -238,8 +283,8 @@ public class receive : MonoBehaviour
             List<Vector3> verticesAfterDisp = MoveVerticesThreshold(vertices, disp, indices);
             mesh.vertices = verticesAfterDisp.ToArray();
             Debug.Log("Getting data from Python " + words.Length);
-            Debug.Log("Start: " + words[0]);
-            Debug.Log("End: " + words[words.Length - 5]);
+        //    Debug.Log("Start: " + words[0]);
+          //  Debug.Log("End: " + words[words.Length - 5]);
         }
         else
         {
