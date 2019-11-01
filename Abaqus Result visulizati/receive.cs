@@ -213,19 +213,30 @@ public class receive : MonoBehaviour
         double timeBeforeTotal = Time.realtimeSinceStartup;
         client.Send(sendData);
         byte[] b = new byte[(int)Mathf.Pow(2, 20f)];
-        double timeBefore = Time.realtimeSinceStartup;
+       
         int k = client.Receive(b);
-        double timeAfter = Time.realtimeSinceStartup;
+       
         //   Debug.Log("Time for receiving data: " + (timeAfter - timeBefore).ToString());
         double timeAfterTotal = Time.realtimeSinceStartup;
         //   Debug.Log("Time for sending data: " + (timeAfterTotal - timeBeforeTotal).ToString());
-        string szReceived = System.Text.Encoding.ASCII.GetString(b, 0, k);
+       // string szReceived = System.Text.Encoding.ASCII.GetString(b, 0, k);
+
+
+        string szReceived = " ";
+        Vector3 vertex;
+        
+        StreamReader reader = Reader("F:/Research/FEA simulation for NN/train_patient_specific/disp_prediction.txt");
+        szReceived = reader.ReadLine();
+        
+        reader.Close();
+
+        
         List<int> indices = new List<int>();
         if (client.Connected)
         {
             disp = new List<Vector3>();
             string[] words = szReceived.Split(',');
-
+           
             for (int i = 0; i < words.Length - 4; i += 4)
             {
                 int index = int.Parse(words[i]);
@@ -235,9 +246,14 @@ public class receive : MonoBehaviour
                 disp.Add(new Vector3(x, y, z));
                 indices.Add(index);
             }
+            double timeAfter = Time.realtimeSinceStartup;
+            
             List<Vector3> verticesAfterDisp = MoveVerticesThreshold(vertices, disp, indices);
+
+            double timeBefore = Time.realtimeSinceStartup;
             mesh.vertices = verticesAfterDisp.ToArray();
-            Debug.Log("Getting data from Python " + words.Length);
+            Debug.Log("Time for reading data: " + (timeAfter - timeBefore).ToString());
+         //   Debug.Log("Getting data from Python " + words.Length);
          //   Debug.Log("Start: " + words[0]);
          //   Debug.Log("End: " + words[words.Length - 5]);
         }
@@ -246,6 +262,7 @@ public class receive : MonoBehaviour
             Debug.Log(" Not Connected");
 
         }
+
         client.Close();
     }
 
