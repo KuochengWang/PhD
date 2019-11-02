@@ -7,12 +7,14 @@ import odbAccess
 from odbAccess import openOdb
 import os
 import pdb
-import manipulate_abaqus_file
 import read_tetgen
 import sys 
 
-# to run: abaqus python readODB.py unload
-# abaqus python readODB.py weight
+# to run: abaqus python readODB.py unload  or
+# abaqus python readODB.py weight or
+# abaqus python readODB.py tumor
+# the unload is to cancle the gravity, weight is read the result .odb file and 
+# added the displacement to the model,  
 
 class ReadOdb:
     # arguments:
@@ -69,11 +71,11 @@ class ReadOdb:
                     x, y, z = field_value.data       
                     disps_dic[label] = [x, y, z] 
                     index += 1            
-        displacements = []
-        for index in range(num_nodes_total):
-            pos = disps_dic[index + 1]
-            displacements.append(pos)
-        return displacements        
+                displacements = []
+                for index in range(num_nodes_total):
+                    pos = disps_dic[index + 1]
+                    displacements.append(pos)
+                return displacements        
     
     # read a specific point postion and displacement of a frame
     # arguments:
@@ -125,7 +127,7 @@ def write_hand_pos(filenames, start_positions, end_positions):
     for file, start, end in zip(filenames, start_positions, end_positions):
         write_to_file(file, [start], 'append')
         write_to_file(file, [end], 'append')
-    
+
 # calculate the center of a part
 # args:
 # inp_file, .inp file name
@@ -148,7 +150,20 @@ def find_centers(inp_file, eleset, odb_reader, step_name, part, part_start):
         start, end = odb_reader.read_start_end_pos(step_name, label, part)
         positions_across_frame.append(np.array(start) - np.array(end))
     pdb.set_trace()
+    
+# calculate the displacement of an element set 
+# args:
+# inp_file, tumor_eleset, tumor_part, odb_file, breast_part, odb_step
+def center_disp(args):
+    inp_file, tumor_eleset, odb_file, breast_part_start, step, breast_part = args
+    abaqus = manipulate_abaqus_file.ReadAbaqusInput(inp_file)
+    node_indices = abaqus.get_node_from_elemset(tumor_eleset, breast_part_start)
+    disp = read_lastframe(odb_file, step, breast_part)
+    return np.mean(np.array(disp), axis=0)       
 
+# read displacement of last frame
+# return:
+# a list of 3D displacements
 def read_lastframe(file_name, step, part):
     odb = openOdb(file_name)
     frame_num = -1
@@ -195,10 +210,24 @@ if __name__ == "__main__":
                 file_name = inp_output_folder + '/' + file_name.split('.')[0] + '.inp'
             abaqus.write_output(file_name)
     
-    if purpose == 'weight':
-        odb_files = glob.glob('Abaqus_outputs/weight/*odb')
+    if purpose == 'weight':  # read the result .odb file and added the displacement to the model 
+        odb_files = glob.glob('F:/Research/FEA simulation for NN/stl/Abaqus_outputs/weight/glandular_fat_10_90/*odb')
         for file in odb_files:
+            output_folder = 'F:/Research/FEA simulation for NN/train_patient_specific/disps'
             disps = read_lastframe(file, breast_step, breast_part) 
-            file_name = os.path.basename(file)
+            file_name = os.path.basename(file)   
             file_name = os.path.join(output_folder, file_name.split('.')[0] + '.txt')
             write_to_file(file_name, disps, 'write')
+            
+    if purpose == 'tumor':
+        odb_files = glob.glob('F:/Research/FEA simulation for NN/stl/Abaqus_outputs/weight/glandular_fat_10_90/*odb')       
+        for file in odb_files:
+            output_folder = 'F:/Research/FEA simulation for NN/train_patient_specific/tumor'
+            inp_file = 'Weight Jobs/reference_pos.inp'
+            args = [inp_file, tumor_elset, file, breast_part_start, breast_step, breast_part]
+            disp = center_disp(args)     
+            file_name = os.path.basename(file)   
+            file_name = os.path.join(output_folder, file_name.split('.')[0] + '.txt')
+            output_file = open(file_name, 'w')
+            output_file.write(str(disp[0]) + ' ' + str(disp[1]) + ' ' + str(disp[0]))
+            output_file.close()
