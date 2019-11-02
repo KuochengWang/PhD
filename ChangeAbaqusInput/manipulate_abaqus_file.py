@@ -132,6 +132,21 @@ class ReadAbaqusInput:
                 line_str = line_str[1:]
                 self.contents.insert(start, line_str)
             
+    # given an element set, it reads the element from the set, and map it to 
+    # specific node
+    # args: 
+    # eleset: the start line of eleset
+    # part: the start line of the part that the elements are in
+    # return:
+    # a numpy array of unique node indices from the element set
+    def get_node_from_elemset(self, eleset, part):
+        elements = self.read_elset_or_nset(eleset)
+        element_to_node = self.read_element(part)
+        node_indices = []
+        for elem in elements:
+            node_indices.append(element_to_node[elem - 1]) 
+        nodes_unique = np.unique(np.array(node_indices))
+        return nodes_unique
     
     # returns:
     # line : a list of strings
