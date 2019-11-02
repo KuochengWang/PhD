@@ -1,6 +1,11 @@
-# To run, python train.py --train_data=. --pretrained_file=ck1.h5 --mode=connet_to_unity_weight
-# python train.py --train_data=disps --checkpoint=ck1.h5 --mode=train
-# python train.py --train_data=disps --pretrained_file=ck1.h5 --mode=train
+# train or predict displacement of tumor
+# breast set:
+# To run, python train.py --type=breast --train_data=. --pretrained_file=ck1.h5 --mode=connet_to_unity_weight
+# python train.py --type=breast --train_data=disps --checkpoint=ck1.h5 --mode=train
+# python train.py --type=breast --train_data=disps --pretrained_file=ck1.h5 --mode=train
+# tumor set
+# python train.py --type=tumor --train_data=tumor --checkpoint=tumor.h5 --mode=train
+# python train.py --type=tumor --train_data=tumor --pretrained_file=tumor.h5 --mode=train
 # when there is checkpoint already, don't need checkpoint. checkpoint is for 
 # creating a new checkpoint
 
@@ -26,11 +31,25 @@ sys.path.insert(0, 'F:/Research/FEA simulation for NN/stl')
 import generate_scenario
 import manipulate_abaqus_file
 
-def build_model(point_num, col_num):
+def breast_model(point_num, col_num):
   model = keras.Sequential([
     layers.Flatten(input_shape=(1, 3)),
     layers.Dense(90, activation=tf.nn.relu),
     layers.Dense(60, activation=tf.nn.relu),
+    layers.Dense(point_num * col_num)
+  ])
+
+  optimizer = tf.keras.optimizers.Adam(0.00001)
+
+  model.compile(loss='mse',
+                optimizer=optimizer,
+                metrics=['mean_absolute_error', 'mse'])
+  return model
+
+def tumor_model(point_num, col_num):
+  model = keras.Sequential([
+    layers.Flatten(input_shape=(1, 3)),
+    layers.Dense(30, activation=tf.nn.relu),
     layers.Dense(point_num * col_num)
   ])
 
@@ -143,21 +162,32 @@ def get_surface_disp(triangles, disp):
     return res
 
 def main(args):
-  disp_filenames = glob.glob('F:/Research/FEA simulation for NN/train_patient_specific/disps/*')
+  if args.type == 'breast': 
+    disp_filenames = glob.glob('F:/Research/FEA simulation for NN/train_patient_specific/disps/*')
+  elif args.type == 'tumor':
+    disp_filenames = glob.glob('F:/Research/FEA simulation for NN/train_patient_specific/tumor/*')
+  else:
+    return
   random.shuffle(disp_filenames)
   num_files = len(disp_filenames)
   if num_files == 0:
     return
-  surface_file = 'F:/Research/FEA simulation for NN/stl/Skin_Layer.face'
-  breast_info = generate_scenario.GetInfoFromBreast('F:/Research/FEA simulation for NN/stl/Skin_Layer.ele', 'F:/Research/FEA simulation for NN/stl/Skin_Layer.node')
-  triangles = breast_info.read_face_indices(surface_file)
-  position = read(disp_filenames[0])
-  point_num = triangles.shape[0]
+  if args.type == 'breast':
+    surface_file = 'F:/Research/FEA simulation for NN/stl/Skin_Layer.face'
+    breast_info = generate_scenario.GetInfoFromBreast('F:/Research/FEA simulation for NN/stl/Skin_Layer.ele', 'F:/Research/FEA simulation for NN/stl/Skin_Layer.node')
+    triangles = breast_info.read_face_indices(surface_file)
+    position = read(disp_filenames[0])
+    point_num = triangles.shape[0]
+  if args.type == 'tumor':
+    point_num = 1
   col_num = 3
   nn_input = np.zeros([len(disp_filenames), 1, col_num])
   nn_output = np.zeros([len(disp_filenames), point_num * col_num])
   mode = args.mode
-  model = build_model(point_num, col_num)
+  if args.type == 'breast':
+    model = breast_model(point_num, col_num)
+  if args.type == 'tumor':
+    model = tumor_model(point_num, col_num)
   if mode == 'train':
     inp_files = glob.glob('F:/Research/FEA simulation for NN/stl/Abaqus_outputs/weight/glandular_fat_10_90/*inp') 
     gravity = '** Name: GRAVITY-1   Type: Gravity\n'
@@ -170,7 +200,10 @@ def main(args):
         _, direction = abaqus.read_gravity(gravity)            
         nn_input[idx, 0 : 1, :] = direction
         temp_pos = read(name)
-        disp = np.array(get_surface_disp(triangles, temp_pos))       
+        if args.type == 'breast':
+          disp = np.array(get_surface_disp(triangles, temp_pos))  
+        if args.type == 'tumor':
+          disp = temp_pos
         nn_output[idx, :] = np.reshape(disp, point_num * col_num)
         idx += 1
     if args.pretrained_file != 'None':
@@ -203,5 +236,6 @@ if __name__ == "__main__":
       '--mode', help='One of 3 modes: train, eval, infer or connet_to_unity.', type=str, default='train')
   arg_parser.add_argument(
       '--pretrained_file', help='load the pretrained weights', type=str, default='None')
+  arg_parser.add_argument('--type', help='tumor or breast', type=str)
   args = arg_parser.parse_args()
   main(args)
