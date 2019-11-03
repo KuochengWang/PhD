@@ -128,7 +128,7 @@ def write_hand_pos(filenames, start_positions, end_positions):
         write_to_file(file, [start], 'append')
         write_to_file(file, [end], 'append')
 
-# calculate the center of a part
+# calculate the center of a part across frames, not working yet
 # args:
 # inp_file, .inp file name
 # eleset, which element set does the part belong to 
@@ -151,7 +151,7 @@ def find_centers(inp_file, eleset, odb_reader, step_name, part, part_start):
         positions_across_frame.append(np.array(start) - np.array(end))
     pdb.set_trace()
     
-# calculate the displacement of an element set 
+# calculate the center of displacement of an element set 
 # args:
 # inp_file, tumor_eleset, tumor_part, odb_file, breast_part, odb_step
 def center_disp(args):
@@ -159,7 +159,10 @@ def center_disp(args):
     abaqus = manipulate_abaqus_file.ReadAbaqusInput(inp_file)
     node_indices = abaqus.get_node_from_elemset(tumor_eleset, breast_part_start)
     disp = read_lastframe(odb_file, step, breast_part)
-    return np.mean(np.array(disp), axis=0)       
+    disp_eleset = []
+    for index in node_indices:
+        disp_eleset.append(disp[index - 1])
+    return np.mean(np.array(disp_eleset), axis=0)       
 
 # read displacement of last frame
 # return:
