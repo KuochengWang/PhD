@@ -77,8 +77,8 @@ public class receive : MonoBehaviour
         Prediction(direction);
         double timeAfter = Time.realtimeSinceStartup;      
         mesh.RecalculateNormals();
-        GameObject.Find("ArrayStart").transform.position = breastCenter + Vector3.down * arrowOffset;
-        GameObject.Find("ArrayEnd").transform.position = breastCenter + Vector3.down * arrowOffset + direction * 2;
+     //   GameObject.Find("ArrayStart").transform.position = breastCenter + Vector3.down * arrowOffset;
+     //   GameObject.Find("ArrayEnd").transform.position = breastCenter + Vector3.down * arrowOffset + direction * 2;
     }
 
     void OnGUI()
@@ -205,31 +205,50 @@ public class receive : MonoBehaviour
         return verticesAfterDisp;
     }
 
+    // split the information recieved from python about tumor
+    // return tumor center and postion
+    private Vector3[] tumorStuff(string tumorInfor)
+    {
+        string[] tumorInfoSplit = tumorInfor.Split(' ');
+        Debug.Log(tumorInfoSplit);
+        string[] tumorDispStr = (tumorInfoSplit[0]).Split(',');
+        string[] tumorCenterStr = tumorInfoSplit[1].Split(',');
+        Vector3 tumorDisp = new Vector3(float.Parse(tumorDispStr[0]), float.Parse(tumorDispStr[1]), float.Parse(tumorDispStr[2]));
+        Vector3 tumorCenter = new Vector3(float.Parse(tumorCenterStr[0]), float.Parse(tumorCenterStr[1]), float.Parse(tumorCenterStr[2]));
+        return new Vector3[2]{tumorCenter, tumorDisp};
+    }
+
     public void Prediction(Vector3 direction)
     {
+        double timeBeforeTotal = Time.realtimeSinceStartup;
         client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         client.Connect(IP, Port);
         sendData = System.Text.Encoding.ASCII.GetBytes(direction[0].ToString("G4") + "," + direction[1].ToString("G4") + "," + direction[2].ToString("G4"));
-        double timeBeforeTotal = Time.realtimeSinceStartup;
+       
         client.Send(sendData);
-        byte[] b = new byte[(int)Mathf.Pow(2, 20f)];
+        byte[] b = new byte[100];
        
         int k = client.Receive(b);
-       
+        
         //   Debug.Log("Time for receiving data: " + (timeAfter - timeBefore).ToString());
         double timeAfterTotal = Time.realtimeSinceStartup;
-        //   Debug.Log("Time for sending data: " + (timeAfterTotal - timeBeforeTotal).ToString());
-       // string szReceived = System.Text.Encoding.ASCII.GetString(b, 0, k);
-
-
+        Debug.Log("Time for sending data1: " + (timeAfterTotal - timeBeforeTotal).ToString());
+        
+        string tumorInfor = System.Text.Encoding.ASCII.GetString(b, 0, k);
+        Vector3[] tumor_center_disp = tumorStuff(tumorInfor);
+        Vector3 tumorCeter = tumor_center_disp[0];
+        Vector3 tumorDisp = tumor_center_disp[1];
+        GameObject.Find("tumor").transform.position = tumorCeter + tumorDisp;
+      
         string szReceived = " ";
         Vector3 vertex;
+        
         
         StreamReader reader = Reader("F:/Research/FEA simulation for NN/train_patient_specific/disp_prediction.txt");
         szReceived = reader.ReadLine();
         
         reader.Close();
-
+        Debug.Log("Time for sending data2: " + (Time.realtimeSinceStartup - timeBeforeTotal).ToString());
         
         List<int> indices = new List<int>();
         if (client.Connected)
@@ -262,7 +281,7 @@ public class receive : MonoBehaviour
             Debug.Log(" Not Connected");
 
         }
-
+        Debug.Log("Time for sending data3: " + (Time.realtimeSinceStartup - timeBeforeTotal).ToString());
         client.Close();
     }
 
