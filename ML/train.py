@@ -2,11 +2,11 @@
 # training 
 # breast set:
 # To run
-# python train.py --type=breast --train_data=disps --checkpoint=ck1.h5 --mode=train  (starting training all over)
-# python train.py --type=breast --train_data=disps --pretrained_file=ck1.h5 --mode=train (continue training)
+# python train.py --type=breast --train_data=disps --checkpoint=ck2.h5 --mode=train  (starting training all over)
+# python train.py --type=breast --train_data=disps --pretrained_file=ck2.h5 --mode=train (continue training)
 # tumor set: 
-# python train.py --type=tumor --train_data=tumor --pretrained_file=tumor.h5 --mode=train
-# python train.py --type=tumor --train_data=tumor --checkpoint=tumor.h5 --mode=train
+# python train.py --type=tumor --train_data=tumor --pretrained_file=tumor2.h5 --mode=train
+# python train.py --type=tumor --train_data=tumor --checkpoint=tumor2.h5 --mode=train
 # when there is checkpoint already, don't need checkpoint. checkpoint is for 
 # creating a new checkpoint
 
@@ -33,8 +33,8 @@ import manipulate_abaqus_file
 
 def breast_model(point_num, col_num):
   model = keras.Sequential([
-    layers.Flatten(input_shape=(1, 3)),
-    layers.Dense(90, activation=tf.nn.relu),
+    layers.Flatten(input_shape=(1, 4)),
+    layers.Dense(60, activation=tf.nn.relu),
     layers.Dense(60, activation=tf.nn.relu),
     layers.Dense(point_num * col_num)
   ])
@@ -48,7 +48,7 @@ def breast_model(point_num, col_num):
 
 def tumor_model(point_num, col_num):
   model = keras.Sequential([
-    layers.Flatten(input_shape=(1, 3)),
+    layers.Flatten(input_shape=(1, 4)),
     layers.Dense(20, activation=tf.nn.relu),
     layers.Dense(point_num * col_num)
   ])
@@ -120,6 +120,7 @@ def conv_to_weightpredc(data):
   except:
     print('input must have 3 numbers')
   res = np.zeros((1, 1, 3))
+  print(data)
   res[0,0,0] = data_float[0]
   res[0,0,1] = data_float[1]
   res[0,0,2] = data_float[2] 
@@ -128,6 +129,7 @@ def conv_to_weightpredc(data):
 def connect_to_unity(tumormodel, breastmodel, tumor_center, flag):
   host, port = '127.0.0.1', 25001
   sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
   sock.bind((host, port))
   sock.listen(5)
   tumor_center_str = conv_to_string(tumor_center.reshape(1,3))
@@ -145,13 +147,13 @@ def connect_to_unity(tumormodel, breastmodel, tumor_center, flag):
     
     breast_disp_str = filter_out_data(breast_disp, threshold)
     tumor_disp_str = conv_to_string(tumor_disp) 
-    
+    print(tumor_disp_str)
     
     output_file = open('disp_prediction.txt', 'w')
     output_file.write(str(breast_disp_str))
     output_file.close()
     
-    ddd = breast_disp_str.split(',')
+  #  ddd = breast_disp_str.split(',')
   #  print(len(ddd))
   #  print(end - start)
   #  pdb.set_trace()
@@ -174,19 +176,28 @@ def read_surface():
 def main(args):
   mode = args.mode
   if args.type == 'breast': 
-    disp_filenames = glob.glob('F:/Research/FEA simulation for NN/train_patient_specific/disps/*')
+    disp_folders = glob.glob('F:/Research/FEA simulation for NN/train_patient_specific/disps/*')        
   elif args.type == 'tumor':
-    disp_filenames = glob.glob('F:/Research/FEA simulation for NN/train_patient_specific/tumor/*')
+    disp_folders = glob.glob('F:/Research/FEA simulation for NN/train_patient_specific/tumor/*')
   elif mode == 'connet_to_unity_weight':
     triangles = read_surface()
     breast_point_num = triangles.shape[0]
     tumor_point_num = 1
   else:
     return
+  if args.type == 'breast' or args.type == 'tumor':
+    ratios = []
+    disp_filenames = []
+    for disp_folder in disp_folders:
+      ratio = float(os.path.basename(disp_folder).split('_')[2])
+      temp_file = glob.glob(disp_folder + '/*')
+      disp_filenames += temp_file
+      ratios += ([ratio] * len(temp_file))
+  
   col_num = 3
   inp_files = glob.glob('F:/Research/FEA simulation for NN/stl/Abaqus_outputs/weight/glandular_fat_10_90/*inp') 
   if mode == 'train':
-    random.shuffle(disp_filenames)
+   # random.shuffle(disp_filenames)
     num_files = len(disp_filenames)
     if num_files == 0:
       return
@@ -196,7 +207,7 @@ def main(args):
       point_num = triangles.shape[0]
     if args.type == 'tumor':
       point_num = 1          
-    nn_input = np.zeros([len(disp_filenames), 1, col_num])
+    nn_input = np.zeros([len(disp_filenames), 1, col_num + 1])
     nn_output = np.zeros([len(disp_filenames), point_num * col_num])
   
     if args.type == 'breast':
@@ -210,8 +221,8 @@ def main(args):
       name = os.path.join(os.path.dirname(disp_filenames[0]), name.split('.')[0] + '.txt')
       if name in disp_filenames:
         abaqus = manipulate_abaqus_file.ReadAbaqusInput(file)
-        _, direction = abaqus.read_gravity(gravity)            
-        nn_input[idx, 0 : 1, :] = direction
+        _, direction = abaqus.read_gravity(gravity)    
+        nn_input[idx, 0 : 1, :] = direction + [ratios[idx]]
         temp_pos = read(name)
         if args.type == 'breast':
           disp = np.array(get_surface_disp(triangles, temp_pos))  
