@@ -192,12 +192,20 @@ def main(args):
       ratio = float(os.path.basename(disp_folder).split('_')[2])
       temp_file = glob.glob(disp_folder + '/*')
       disp_filenames += temp_file
-      ratios += ([ratio] * len(temp_file))
+      ratios += ([ratio/100] * len(temp_file))
   
   col_num = 3
-  inp_files = glob.glob('F:/Research/FEA simulation for NN/stl/Abaqus_outputs/weight/glandular_fat_10_90/*inp') 
+  directory = 'F:/Research/FEA simulation for NN/stl/Abaqus_outputs/weight/'
+  inp_files_dirs = [name for name in os.listdir(directory) if os.path.isdir(os.path.join(directory, name))]
+  inp_files = []
+  for direc in inp_files_dirs:
+    inp_files += glob.glob(os.path.join(directory, direc) + '/*inp')
+  #inp_files = glob.glob('F:/Research/FEA simulation for NN/stl/Abaqus_outputs/weight/glandular_fat_10_90/*inp') 
+  
   if mode == 'train':
-   # random.shuffle(disp_filenames)
+    disp_filenames_and_ratios = list(zip(disp_filenames, ratios))
+    random.shuffle(disp_filenames_and_ratios)
+    disp_filenames, ratios = zip(*disp_filenames_and_ratios)
     num_files = len(disp_filenames)
     if num_files == 0:
       return
@@ -209,27 +217,33 @@ def main(args):
       point_num = 1          
     nn_input = np.zeros([len(disp_filenames), 1, col_num + 1])
     nn_output = np.zeros([len(disp_filenames), point_num * col_num])
-  
+       
     if args.type == 'breast':
       model = breast_model(point_num, col_num)
     if args.type == 'tumor':
       model = tumor_model(point_num, col_num)  
     gravity = '** Name: GRAVITY-1   Type: Gravity\n'
-    idx = 0
-    for file in inp_files:
-      name = os.path.basename(file)
-      name = os.path.join(os.path.dirname(disp_filenames[0]), name.split('.')[0] + '.txt')
-      if name in disp_filenames:
-        abaqus = manipulate_abaqus_file.ReadAbaqusInput(file)
-        _, direction = abaqus.read_gravity(gravity)    
-        nn_input[idx, 0 : 1, :] = direction + [ratios[idx]]
-        temp_pos = read(name)
-        if args.type == 'breast':
-          disp = np.array(get_surface_disp(triangles, temp_pos))  
-        if args.type == 'tumor':
-          disp = temp_pos
-        nn_output[idx, :] = np.reshape(disp, point_num * col_num)
-        idx += 1
+    
+    for idx, file in enumerate(disp_filenames):
+        name = os.path.basename(file)
+        file_ratio = os.path.basename(os.path.normpath(os.path.dirname(file)))
+        temp_file = os.path.join(directory, file_ratio)
+        temp_file = os.path.join(temp_file, name.split('.')[0] + '.inp')
+        if temp_file not in inp_files:
+            print(temp_file)
+        if temp_file in inp_files:
+          abaqus = manipulate_abaqus_file.ReadAbaqusInput(temp_file)
+          _, direction = abaqus.read_gravity(gravity)
+      #    print(idx)
+          nn_input[idx, 0 : 1, :] = direction + [ratios[idx]]
+          temp_pos = read(file)
+          if args.type == 'breast':
+            disp = np.array(get_surface_disp(triangles, temp_pos))  
+          if args.type == 'tumor':
+            disp = temp_pos
+          nn_output[idx, :] = np.reshape(disp, point_num * col_num)
+        
+    pdb.set_trace()
     if args.pretrained_file != 'None':
       model.load_weights(args.pretrained_file)
       checkpoint = args.pretrained_file
