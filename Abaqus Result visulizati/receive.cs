@@ -14,7 +14,8 @@ public class receive : MonoBehaviour
 
     // Use this for initialization
     private Mesh mesh;
-    private List<Vector3> vertices;
+    private List<Vector3> vertices;  // breast vertices
+    private Vector3[] tumorVertices; 
     private List<int> triangles;
     private int[] trianglesUnique;
     List<Vector3> disp;
@@ -33,11 +34,13 @@ public class receive : MonoBehaviour
     {
         gameObject.AddComponent<MeshFilter>();
         gameObject.AddComponent<MeshRenderer>();
+        Color newColor = new Color(200f, 100f, 100f, 0.5f);
+        gameObject.GetComponent<MeshRenderer>().material.color = new Color(1.0f, 1.0f, 1.0f, 0.5f); ;
         mesh = GetComponent<MeshFilter>().mesh;
         triangles = new List<int>();
         mesh.Clear();
-        vertices = buildVertexMesh("Breast/Skin_Layer.node");
-        buildFaceMesh("Breast/Skin_Layer.face");
+        vertices = BuildVertexMesh("Breast/Skin_Layer.node");
+        BuildFaceMesh("Breast/Skin_Layer.face");
         mesh.vertices = vertices.ToArray();
         mesh.triangles = triangles.ToArray();
         trianglesUnique = triangles.Distinct().ToArray();
@@ -55,18 +58,22 @@ public class receive : MonoBehaviour
         mesh.RecalculateNormals();
         needle = GameObject.Find("needle");
         yaw = 0f;
-        breastCenter = calculateCenter(vertices);
-      //  transform.Translate(-breastCenter);
+
+        breastCenter = CalculateCenter(vertices);
+        GameObject tumor = GameObject.Find("tumor");
+        Mesh tumorMesh = ReturnMesh(tumor);
+        tumorVertices = CopyListVector3(tumorMesh.vertices);
+        //  transform.Translate(-breastCenter);
     }
 
     // Update is called once per frame
     void Update()
     {
-       // if(Input.GetKey("up"))
+        // if(Input.GetKey("up"))
         {
             yaw += 2;
-         //   transform.RotateAround(breastCenter, Vector3.forward, 2); // rotate around its own center
-            
+            //   transform.RotateAround(breastCenter, Vector3.forward, 2); // rotate around its own center
+
         }
         Vector3 direction = new Vector3(Mathf.Cos(yaw * Mathf.Deg2Rad), Mathf.Sin(yaw * Mathf.Deg2Rad), 0);
         Vector3 displacement = new Vector3(-7f, -6f, -2f);
@@ -75,51 +82,35 @@ public class receive : MonoBehaviour
         double timeBefore = Time.realtimeSinceStartup;
         //	Changing(displacement, needlePos);
         Prediction(direction);
-        double timeAfter = Time.realtimeSinceStartup;      
+        double timeAfter = Time.realtimeSinceStartup;
         mesh.RecalculateNormals();
-     //   GameObject.Find("ArrayStart").transform.position = breastCenter + Vector3.down * arrowOffset;
-     //   GameObject.Find("ArrayEnd").transform.position = breastCenter + Vector3.down * arrowOffset + direction * 2;
+        //   GameObject.Find("ArrayStart").transform.position = breastCenter + Vector3.down * arrowOffset;
+        //   GameObject.Find("ArrayEnd").transform.position = breastCenter + Vector3.down * arrowOffset + direction * 2;
     }
 
-    void OnGUI()
+    // copy a list of vector3
+    public static Vector3[] CopyListVector3(Vector3[] source)
     {
-        GUI.Label(new Rect(0, 0, 100, 100), (1f / Time.smoothDeltaTime).ToString());
+        Vector3[] destination = new Vector3[source.Length];
+        for(int i = 0; i < source.Length; i++)
+        {
+            destination[i] = new Vector3(source[i].x, source[i].y, source[i].z);
+        }
+        return destination;
     }
 
-    private Vector3 calculateCenter(List<Vector3> verts)
+    private Vector3 CalculateCenter(List<Vector3> verts)
     {
         Vector3 center = Vector3.zero;
-        for(int i = 0; i < verts.Count; i++)
+        for (int i = 0; i < verts.Count; i++)
         {
             center += verts[i];
         }
         return center / verts.Count;
     }
 
-    // To show the lines in the game window whne it is running
-    void OnPostRender()
-    {
-         Vector3 direction = new Vector3(Mathf.Cos(yaw * Mathf.Deg2Rad), Mathf.Sin(yaw * Mathf.Deg2Rad), 0);
-         drawLine(breastCenter, direction * 100);
-    }
 
-    // To show the lines in the editor
-    void OnDrawGizmos()
-    {
-        Vector3 direction = new Vector3(Mathf.Cos(yaw * Mathf.Deg2Rad), Mathf.Sin(yaw * Mathf.Deg2Rad), 0);
-        drawLine(breastCenter, direction * 100);
-    }
-
-    private void drawLine(Vector3 lineStart, Vector3 lineEnd)
-    {
-        GL.Begin(GL.LINES);
-        GL.Color(new Color(0, 100, 100));
-        GL.Vertex3(lineStart.x, lineStart.y, lineStart.z);
-        GL.Vertex3(lineEnd.x, lineEnd.y, lineEnd.z);
-        GL.End();
-    }
-
-    private List<Vector3> buildVertexMesh(string nodeFile)
+    private List<Vector3> BuildVertexMesh(string nodeFile)
     {
         string text = " ";
         Vector3 vertex;
@@ -138,7 +129,7 @@ public class receive : MonoBehaviour
         return verts;
     }
 
-    private void buildFaceMesh(string surfaceFile)
+    private void BuildFaceMesh(string surfaceFile)
     {
         StreamReader reader = Reader(surfaceFile);
         string text = " ";
@@ -193,7 +184,7 @@ public class receive : MonoBehaviour
         Debug.Log(verts[index]);
     }
 
-    
+
     private List<Vector3> MoveVerticesThreshold(List<Vector3> vertices, List<Vector3> disp, List<int> indices)
     {
         List<Vector3> verticesAfterDisp = new List<Vector3>(vertices);
@@ -207,7 +198,7 @@ public class receive : MonoBehaviour
 
     // split the information recieved from python about tumor
     // return tumor center and postion
-    private Vector3[] tumorStuff(string tumorInfor)
+    private Vector3[] TumorStuff(string tumorInfor)
     {
         string[] tumorInfoSplit = tumorInfor.Split(' ');
         Debug.Log(tumorInfoSplit);
@@ -215,7 +206,27 @@ public class receive : MonoBehaviour
         string[] tumorCenterStr = tumorInfoSplit[1].Split(',');
         Vector3 tumorDisp = new Vector3(float.Parse(tumorDispStr[0]), float.Parse(tumorDispStr[1]), float.Parse(tumorDispStr[2]));
         Vector3 tumorCenter = new Vector3(float.Parse(tumorCenterStr[0]), float.Parse(tumorCenterStr[1]), float.Parse(tumorCenterStr[2]));
-        return new Vector3[2]{tumorCenter, tumorDisp};
+        return new Vector3[2] { tumorCenter, tumorDisp };
+    }
+
+    // move directly the object by adding value to each mesh point 
+    private void MoveObjectMesh(GameObject obj, Vector3 vec)
+    {
+        Mesh objMesh = ReturnMesh(obj);
+        List<Vector3> temp_vertices = new List<Vector3>();
+        for (int i = 0; i < objMesh.vertexCount; i++)
+        {
+            temp_vertices.Add(objMesh.vertices[i] + vec);
+        }
+        objMesh.vertices = temp_vertices.ToArray();
+    }
+
+    // Given an object, return its mesh
+    private Mesh ReturnMesh(GameObject obj)
+    {
+        MeshFilter filter = (MeshFilter)obj.GetComponent("MeshFilter");
+        Mesh objMesh = filter.mesh;
+        return objMesh;
     }
 
     public void Prediction(Vector3 direction)
@@ -224,38 +235,41 @@ public class receive : MonoBehaviour
         client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         client.Connect(IP, Port);
         sendData = System.Text.Encoding.ASCII.GetBytes(direction[0].ToString("G4") + "," + direction[1].ToString("G4") + "," + direction[2].ToString("G4"));
-       
+
         client.Send(sendData);
         byte[] b = new byte[100];
-       
+
         int k = client.Receive(b);
-        
+
         //   Debug.Log("Time for receiving data: " + (timeAfter - timeBefore).ToString());
         double timeAfterTotal = Time.realtimeSinceStartup;
         Debug.Log("Time for sending data1: " + (timeAfterTotal - timeBeforeTotal).ToString());
-        
+
         string tumorInfor = System.Text.Encoding.ASCII.GetString(b, 0, k);
-        Vector3[] tumor_center_disp = tumorStuff(tumorInfor);
+        Vector3[] tumor_center_disp = TumorStuff(tumorInfor);
         Vector3 tumorCeter = tumor_center_disp[0];
         Vector3 tumorDisp = tumor_center_disp[1];
-        GameObject.Find("tumor").transform.position = tumorCeter + tumorDisp;
-      
+        GameObject tumor = GameObject.Find("tumor");
+        Mesh tumorMesh = ReturnMesh(tumor);
+        tumorMesh.vertices = tumorVertices;
+        MoveObjectMesh(tumor, tumorDisp + tumorCeter);     
+
         string szReceived = " ";
         Vector3 vertex;
-        
-        
+
+
         StreamReader reader = Reader("F:/Research/FEA simulation for NN/train_patient_specific/disp_prediction.txt");
         szReceived = reader.ReadLine();
-        
+
         reader.Close();
         Debug.Log("Time for sending data2: " + (Time.realtimeSinceStartup - timeBeforeTotal).ToString());
-        
+
         List<int> indices = new List<int>();
         if (client.Connected)
         {
             disp = new List<Vector3>();
             string[] words = szReceived.Split(',');
-           
+
             for (int i = 0; i < words.Length - 4; i += 4)
             {
                 int index = int.Parse(words[i]);
@@ -266,15 +280,15 @@ public class receive : MonoBehaviour
                 indices.Add(index);
             }
             double timeAfter = Time.realtimeSinceStartup;
-            
+
             List<Vector3> verticesAfterDisp = MoveVerticesThreshold(vertices, disp, indices);
 
             double timeBefore = Time.realtimeSinceStartup;
             mesh.vertices = verticesAfterDisp.ToArray();
             Debug.Log("Time for reading data: " + (timeAfter - timeBefore).ToString());
-         //   Debug.Log("Getting data from Python " + words.Length);
-         //   Debug.Log("Start: " + words[0]);
-         //   Debug.Log("End: " + words[words.Length - 5]);
+            //   Debug.Log("Getting data from Python " + words.Length);
+            //   Debug.Log("Start: " + words[0]);
+            //   Debug.Log("End: " + words[words.Length - 5]);
         }
         else
         {
@@ -285,48 +299,4 @@ public class receive : MonoBehaviour
         client.Close();
     }
 
-    public void ChangingThreshold(Vector3 needleTip, Vector3 pointPos)
-    {
-        client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        client.Connect(IP, Port);
-        sendData = System.Text.Encoding.ASCII.GetBytes(needleTip[0].ToString("G4") + "," + needleTip[1].ToString("G4") + "," + needleTip[2].ToString("G4") + "," + pointPos[0].ToString("G4") + "," + pointPos[1].ToString("G4") + "," + pointPos[2].ToString("G4"));
-        double timeBeforeTotal = Time.realtimeSinceStartup;
-        client.Send(sendData);
-        byte[] b = new byte[(int)Mathf.Pow(2, 19f)];
-        double timeBefore = Time.realtimeSinceStartup;
-        int k = client.Receive(b);
-        double timeAfter = Time.realtimeSinceStartup;
-        //   Debug.Log("Time for receiving data: " + (timeAfter - timeBefore).ToString());
-        double timeAfterTotal = Time.realtimeSinceStartup;
-        //   Debug.Log("Time for sending data: " + (timeAfterTotal - timeBeforeTotal).ToString());
-        string szReceived = System.Text.Encoding.ASCII.GetString(b, 0, k);
-        List<int> indices = new List<int>();
-        if (client.Connected)
-        {
-
-            disp = new List<Vector3>();
-            string[] words = szReceived.Split(',');
-
-            for (int i = 0; i < words.Length - 4; i += 4)
-            {
-                int index = int.Parse(words[i]);
-                float x = float.Parse(words[i + 1]) * scale;
-                float y = float.Parse(words[i + 2]) * scale;
-                float z = float.Parse(words[i + 3]) * scale;
-                disp.Add(new Vector3(x, y, z));
-                indices.Add(index);
-            }
-            List<Vector3> verticesAfterDisp = MoveVerticesThreshold(vertices, disp, indices);
-            mesh.vertices = verticesAfterDisp.ToArray();
-            Debug.Log("Getting data from Python " + words.Length);
-        //    Debug.Log("Start: " + words[0]);
-          //  Debug.Log("End: " + words[words.Length - 5]);
-        }
-        else
-        {
-            Debug.Log(" Not Connected");
-
-        }
-        client.Close();
-    }
 }
