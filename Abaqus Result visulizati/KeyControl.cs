@@ -8,26 +8,25 @@ public class KeyControl : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-        breast = GameObject.Find("Breast");
-        
+        breast = GameObject.Find("Breast");        
 	}
 	
 	// Update is called once per frame
 	void Update () {
         receive breastScript = breast.GetComponent<receive>();
-        if (Input.GetKey(KeyCode.UpArrow))
+        if (Input.GetKey(KeyCode.W))
         {
            breast.transform.RotateAround(breastScript.breastCenter, Vector3.forward, 2); ;
         }
-        if (Input.GetKey(KeyCode.DownArrow))
+        if (Input.GetKey(KeyCode.S))
         {
             breast.transform.RotateAround(breastScript.breastCenter, Vector3.back, 2); ;
         }
-        if (Input.GetKey(KeyCode.LeftArrow))
+        if (Input.GetKey(KeyCode.A))
         {
             breast.transform.RotateAround(breastScript.breastCenter, Vector3.right, 2); ;
         }
-        if (Input.GetKey(KeyCode.RightArrow))
+        if (Input.GetKey(KeyCode.D))
         {
             breast.transform.RotateAround(breastScript.breastCenter, Vector3.left, 2); ;
         }

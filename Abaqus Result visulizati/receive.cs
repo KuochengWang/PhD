@@ -231,12 +231,12 @@ public class receive : MonoBehaviour
     }
 
   
-    public void Prediction(Vector3 direction)
+    public void Prediction(Vector3 direction, float ratio)
     {
         double timeBeforeTotal = Time.realtimeSinceStartup;
         client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         client.Connect(IP, Port);
-        sendData = System.Text.Encoding.ASCII.GetBytes(direction[0].ToString("G4") + "," + direction[1].ToString("G4") + "," + direction[2].ToString("G4"));
+        sendData = System.Text.Encoding.ASCII.GetBytes(direction[0].ToString("G4") + "," + direction[1].ToString("G4") + "," + direction[2].ToString("G4") + "," + ratio.ToString("G4"));
 
         client.Send(sendData);
         byte[] b = new byte[100];

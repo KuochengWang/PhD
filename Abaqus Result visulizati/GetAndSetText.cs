@@ -6,18 +6,22 @@ using UnityEngine.UI;
 public class GetAndSetText : MonoBehaviour {
 
     public InputField angle;
+    public InputField ratio;
 
     public void setget()
     {
         GameObject breast = GameObject.Find("Breast");
-        receive breastScript = breast.GetComponent<receive>();        
-        if(float.Parse(angle.text) == null)
+        receive breastScript = breast.GetComponent<receive>();
+
+        if (float.Parse(angle.text) == null || float.Parse(ratio.text) == null)
         {
             return;
         }
-        float breast_angle;
-        breast_angle = float.Parse(angle.text);
-        Vector2 direction = new Vector3(Mathf.Cos(breast_angle * Mathf.Deg2Rad), Mathf.Sin(breast_angle * Mathf.Deg2Rad), 0);
-        breastScript.Prediction(direction);
+
+        float breastAngle, glandularFatRatio;
+        breastAngle = float.Parse(angle.text);
+        glandularFatRatio = float.Parse(ratio.text);
+        Vector3 direction = new Vector3(Mathf.Cos(breastAngle * Mathf.Deg2Rad), Mathf.Sin(breastAngle * Mathf.Deg2Rad), 0);
+        breastScript.Prediction(direction, glandularFatRatio);
     }
 }
