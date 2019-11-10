@@ -15,7 +15,7 @@ public class receive : MonoBehaviour
     // Use this for initialization
     private Mesh mesh;
     private List<Vector3> vertices;  // breast vertices
-    private Vector3[] tumorVertices; 
+    private Vector3[] tumorVertices;
     private List<int> triangles;
     private int[] trianglesUnique;
     List<Vector3> disp;
@@ -27,7 +27,7 @@ public class receive : MonoBehaviour
     private float yaw;
     private Vector3 needlePos;
     GameObject needle;
-    private Vector3 breastCenter;
+    public Vector3 breastCenter;
     public float arrowOffset = 50f; // height for arrow
 
     void Start()
@@ -63,6 +63,7 @@ public class receive : MonoBehaviour
         GameObject tumor = GameObject.Find("tumor");
         Mesh tumorMesh = ReturnMesh(tumor);
         tumorVertices = CopyListVector3(tumorMesh.vertices);
+        gameObject.GetComponent<MeshRenderer>().material.color = new Color(1.0f, 1.0f, 1.0f, 0.7f);
         //  transform.Translate(-breastCenter);
     }
 
@@ -81,7 +82,7 @@ public class receive : MonoBehaviour
         // needle.transform.localPosition = needlePos;
         double timeBefore = Time.realtimeSinceStartup;
         //	Changing(displacement, needlePos);
-        Prediction(direction);
+        // Prediction(direction);
         double timeAfter = Time.realtimeSinceStartup;
         mesh.RecalculateNormals();
         //   GameObject.Find("ArrayStart").transform.position = breastCenter + Vector3.down * arrowOffset;
@@ -92,7 +93,7 @@ public class receive : MonoBehaviour
     public static Vector3[] CopyListVector3(Vector3[] source)
     {
         Vector3[] destination = new Vector3[source.Length];
-        for(int i = 0; i < source.Length; i++)
+        for (int i = 0; i < source.Length; i++)
         {
             destination[i] = new Vector3(source[i].x, source[i].y, source[i].z);
         }
@@ -229,6 +230,7 @@ public class receive : MonoBehaviour
         return objMesh;
     }
 
+  
     public void Prediction(Vector3 direction)
     {
         double timeBeforeTotal = Time.realtimeSinceStartup;
@@ -252,8 +254,9 @@ public class receive : MonoBehaviour
         GameObject tumor = GameObject.Find("tumor");
         Mesh tumorMesh = ReturnMesh(tumor);
         tumorMesh.vertices = tumorVertices;
-        MoveObjectMesh(tumor, tumorDisp + tumorCeter);     
-
+        tumorMesh.bounds = new Bounds(Vector3.zero, Vector3.one * 2000); // otherwise, tumor will disappear at some angle
+        MoveObjectMesh(tumor, tumorDisp + tumorCeter);
+        
         string szReceived = " ";
         Vector3 vertex;
 
@@ -297,6 +300,9 @@ public class receive : MonoBehaviour
         }
         Debug.Log("Time for sending data3: " + (Time.realtimeSinceStartup - timeBeforeTotal).ToString());
         client.Close();
+
+        Mesh m = tumor.GetComponent<MeshFilter>().mesh;
+        m.bounds = new Bounds(Vector3.zero, Vector3.one * 2000); // tumor won't be seen at some angle 
     }
 
 }
