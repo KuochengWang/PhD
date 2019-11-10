@@ -11,7 +11,7 @@
 # creating a new checkpoint
 
 # connect to unity
-# python train.py --train_data=. --pretrained_file=ck1.h5,tumor.h5 --mode=connet_to_unity_weight
+# python train.py --train_data=. --pretrained_file=ck2.h5,tumor2.h5 --mode=connet_to_unity_weight
 
 
 import argparse
@@ -116,14 +116,15 @@ def filter_out_data(data, threshold):
 def conv_to_weightpredc(data):
   data_float = data.split(',')
   try:
-    len(data_float) == 3
+    len(data_float) == 4
   except:
     print('input must have 3 numbers')
-  res = np.zeros((1, 1, 3))
+  res = np.zeros((1, 1, 4))
   print(data)
   res[0,0,0] = data_float[0]
   res[0,0,1] = data_float[1]
-  res[0,0,2] = data_float[2] 
+  res[0,0,2] = data_float[2]
+  res[0,0,3] = data_float[3] 
   return res
 
 def connect_to_unity(tumormodel, breastmodel, tumor_center, flag):
