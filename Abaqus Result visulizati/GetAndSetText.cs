@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -7,13 +8,14 @@ public class GetAndSetText : MonoBehaviour {
 
     public InputField angle;
     public InputField ratio;
+    public InputField rotatePlane;
     private Vector3 breastAngleHistory;
     private Vector3 humanPos;
     private Vector3 femaleCenter;
     public void Start()
     {
         breastAngleHistory = new Vector3(90f, 0f, -90f);
-        humanPos = new Vector3(-21f, 0.27f, -0.89f);
+        humanPos = new Vector3(-21.935f, 0.268f, -0.894f);
         GameObject female = GameObject.Find("Female");
         femaleCenter = GameObject.Find("Female Center").transform.position;
     }
@@ -31,12 +33,21 @@ public class GetAndSetText : MonoBehaviour {
         float glandularFatRatio;
         float breastAngle = 180 + float.Parse(angle.text);
         glandularFatRatio = float.Parse(ratio.text);
-        Vector3 direction = new Vector3(Mathf.Cos(breastAngle * Mathf.Deg2Rad), Mathf.Sin(breastAngle * Mathf.Deg2Rad), 0);
-        breastScript.Prediction(direction, glandularFatRatio);
-        Vector3 offset = new Vector3(140.5f, -7.9f, 115.9f);
+        Vector3 direction;
         female.transform.rotation = Quaternion.Euler(breastAngleHistory);
         female.transform.localPosition = humanPos;
-        female.transform.RotateAround(femaleCenter, Vector3.forward, 180f - breastAngle);
+        if (float.Parse(rotatePlane.text) == 1)
+        {
+            direction = new Vector3(Mathf.Cos(breastAngle * Mathf.Deg2Rad), Mathf.Sin(breastAngle * Mathf.Deg2Rad), 0);
+            female.transform.RotateAround(femaleCenter, Vector3.forward, 180f - breastAngle);
+        }
+        else
+        {
+            direction = new Vector3(0f, Mathf.Cos(breastAngle * Mathf.Deg2Rad), Mathf.Sin(breastAngle * Mathf.Deg2Rad));
+            female.transform.RotateAround(femaleCenter, Vector3.left, 180f - breastAngle);
+        }        
+        breastScript.Prediction(direction, glandularFatRatio);
+        Vector3 offset = new Vector3(140.5f, -7.9f, 115.9f);        
         Debug.Log(breastAngleHistory);
         GameObject.Find("DirStart").transform.position = offset;
         GameObject.Find("DirEnd").transform.position = offset + direction * 5;
