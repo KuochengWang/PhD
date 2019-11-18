@@ -45,7 +45,7 @@ public class receive : MonoBehaviour
         BuildFaceMesh("Breast/Skin_Layer.face");
         mesh.vertices = vertices.ToArray();
         mesh.triangles = triangles.ToArray();
-        trianglesUnique = triangles.Distinct().ToArray(); Debug.Log(trianglesUnique.Length);
+        trianglesUnique = triangles.Distinct().ToArray();
         Array.Sort(trianglesUnique);
         Debug.Log(trianglesUnique.Length);
         Color[] colors = new Color[mesh.vertices.Length];
@@ -257,10 +257,6 @@ public class receive : MonoBehaviour
 
             double timeBefore = Time.realtimeSinceStartup;
             mesh.vertices = verticesAfterDisp.ToArray();
-           // Debug.Log("Time for reading data: " + (timeAfter - timeBefore).ToString());
-            //   Debug.Log("Getting data from Python " + words.Length);
-            //   Debug.Log("Start: " + words[0]);
-            //   Debug.Log("End: " + words[words.Length - 5]);
         }
         else
         {

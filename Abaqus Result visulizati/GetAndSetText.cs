@@ -6,50 +6,58 @@ using UnityEngine.UI;
 
 public class GetAndSetText : MonoBehaviour {
 
-    public InputField angle;
+  //  public InputField angle;
     public InputField ratio;
-    public InputField rotatePlane;
     public Slider tumorSlider;
+    public Slider angleSlider;
+    public Dropdown rotatePlane;
     private Vector3 breastAngleHistory;
     private Vector3 humanPos;
     private Vector3 femaleCenter;
     private GameObject female;
     private GameObject breast;
     private GameObject tumor;
+    private int rotatePlaneValue;
+    private float angle;
 
     public void Start()
     {
         breastAngleHistory = new Vector3(90f, 0f, -90f);
-        humanPos = new Vector3(-21.935f, 0.268f, -0.894f);
+        humanPos = new Vector3(-0f, 0f, -0f);
         female = GameObject.Find("Female");
         femaleCenter = GameObject.Find("Female Center").transform.position;
         breast = GameObject.Find("Breast");
         tumor = GameObject.Find("Tumor");
     }
 
+    public void GetRotatePlane(int index)
+    {
+        rotatePlaneValue = index;
+    }
+
     public void Setget()
     {
         receive breastScript = breast.GetComponent<receive>();
-        if (float.Parse(angle.text) == null || float.Parse(ratio.text) == null)
+        if (angle == null || float.Parse(ratio.text) == null)
         {
             return;
         }
 
         float glandularFatRatio;
-        float breastAngle = 180 + float.Parse(angle.text);
+        float breastAngle = 180 + angle;
         glandularFatRatio = float.Parse(ratio.text);
         Vector3 direction;
         female.transform.rotation = Quaternion.Euler(breastAngleHistory);
         female.transform.localPosition = humanPos;
-        if (float.Parse(rotatePlane.text) == 1)
+        if (rotatePlaneValue == 0)
         {
             direction = new Vector3(Mathf.Cos(breastAngle * Mathf.Deg2Rad), Mathf.Sin(breastAngle * Mathf.Deg2Rad), 0);
             female.transform.RotateAround(femaleCenter, Vector3.forward, 180f - breastAngle);
         }
         else
         {
-            direction = new Vector3(0f, Mathf.Cos(breastAngle * Mathf.Deg2Rad), Mathf.Sin(breastAngle * Mathf.Deg2Rad));
-            female.transform.RotateAround(femaleCenter, Vector3.left, 180f - breastAngle);
+            direction = new Vector3(0f, Mathf.Cos((breastAngle + 180) * Mathf.Deg2Rad), Mathf.Sin((breastAngle + 180) * Mathf.Deg2Rad));
+            female.transform.RotateAround(femaleCenter, Vector3.right, 180f - breastAngle);
         }        
         breastScript.Prediction(direction, glandularFatRatio);
         Vector3 offset = new Vector3(140.5f, -7.9f, 115.9f);
@@ -81,9 +89,15 @@ public class GetAndSetText : MonoBehaviour {
        
     }
 
+    // get value from tumor input from user
     public void ScaleTumorMesh()
     {
         Tumor tumorScript = tumor.GetComponent<Tumor>();
         tumorScript.ScaleTumorMesh(tumorSlider.value);
+    }
+
+    public void GetAngle()
+    {
+        angle = angleSlider.value;
     }
 }
