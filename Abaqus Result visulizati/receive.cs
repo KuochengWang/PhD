@@ -15,20 +15,22 @@ public class receive : MonoBehaviour
     // Use this for initialization
     private Mesh mesh;
     private List<Vector3> vertices;  // breast vertices
-    private Vector3[] tumorVertices;
+    
     private List<int> triangles;
     private int[] trianglesUnique;
     List<Vector3> disp;
+    
     public string IP = "127.0.0.1"; //
     public int Port = 25001;
-    public byte[] sendData;
-    public Socket client;
+    private byte[] sendData;
+    private Socket client;
     private float scale = 1f;
     private float yaw;
     private Vector3 needlePos;
     GameObject needle;
     public Vector3 breastCenter;
     public float arrowOffset = 50f; // height for arrow
+    
 
     void Start()
     {
@@ -43,7 +45,7 @@ public class receive : MonoBehaviour
         BuildFaceMesh("Breast/Skin_Layer.face");
         mesh.vertices = vertices.ToArray();
         mesh.triangles = triangles.ToArray();
-        trianglesUnique = triangles.Distinct().ToArray();
+        trianglesUnique = triangles.Distinct().ToArray(); Debug.Log(trianglesUnique.Length);
         Array.Sort(trianglesUnique);
         Debug.Log(trianglesUnique.Length);
         Color[] colors = new Color[mesh.vertices.Length];
@@ -60,9 +62,7 @@ public class receive : MonoBehaviour
         yaw = 0f;
 
         breastCenter = CalculateCenter(vertices);
-        GameObject tumor = GameObject.Find("tumor");
-        Mesh tumorMesh = ReturnMesh(tumor);
-        tumorVertices = CopyListVector3(tumorMesh.vertices);
+        
         gameObject.GetComponent<MeshRenderer>().material.color = new Color(1.0f, 1.0f, 1.0f, 0.7f);
         //  transform.Translate(-breastCenter);
     }
@@ -85,8 +85,8 @@ public class receive : MonoBehaviour
         // Prediction(direction);
         double timeAfter = Time.realtimeSinceStartup;
         mesh.RecalculateNormals();
-        //   GameObject.Find("ArrayStart").transform.position = breastCenter + Vector3.down * arrowOffset;
-        //   GameObject.Find("ArrayEnd").transform.position = breastCenter + Vector3.down * arrowOffset + direction * 2;
+    //    GameObject.Find("DirStart").transform.position = breastCenter + Vector3.down * arrowOffset;
+    //    GameObject.Find("DirEnd").transform.position = breastCenter + Vector3.down * arrowOffset + direction * 2;
     }
 
     // copy a list of vector3
@@ -197,33 +197,8 @@ public class receive : MonoBehaviour
         return verticesAfterDisp;
     }
 
-    // split the information recieved from python about tumor
-    // return tumor center and postion
-    private Vector3[] TumorStuff(string tumorInfor)
-    {
-        string[] tumorInfoSplit = tumorInfor.Split(' ');
-        Debug.Log(tumorInfoSplit);
-        string[] tumorDispStr = (tumorInfoSplit[0]).Split(',');
-        string[] tumorCenterStr = tumorInfoSplit[1].Split(',');
-        Vector3 tumorDisp = new Vector3(float.Parse(tumorDispStr[0]), float.Parse(tumorDispStr[1]), float.Parse(tumorDispStr[2]));
-        Vector3 tumorCenter = new Vector3(float.Parse(tumorCenterStr[0]), float.Parse(tumorCenterStr[1]), float.Parse(tumorCenterStr[2]));
-        return new Vector3[2] { tumorCenter, tumorDisp };
-    }
-
-    // move directly the object by adding value to each mesh point 
-    private void MoveObjectMesh(GameObject obj, Vector3 vec)
-    {
-        Mesh objMesh = ReturnMesh(obj);
-        List<Vector3> temp_vertices = new List<Vector3>();
-        for (int i = 0; i < objMesh.vertexCount; i++)
-        {
-            temp_vertices.Add(objMesh.vertices[i] + vec);
-        }
-        objMesh.vertices = temp_vertices.ToArray();
-    }
-
     // Given an object, return its mesh
-    private Mesh ReturnMesh(GameObject obj)
+    public static Mesh ReturnMesh(GameObject obj)
     {
         MeshFilter filter = (MeshFilter)obj.GetComponent("MeshFilter");
         Mesh objMesh = filter.mesh;
@@ -245,27 +220,21 @@ public class receive : MonoBehaviour
 
         //   Debug.Log("Time for receiving data: " + (timeAfter - timeBefore).ToString());
         double timeAfterTotal = Time.realtimeSinceStartup;
-        Debug.Log("Time for sending data1: " + (timeAfterTotal - timeBeforeTotal).ToString());
+    //    Debug.Log("Time for sending data1: " + (timeAfterTotal - timeBeforeTotal).ToString());
 
         string tumorInfor = System.Text.Encoding.ASCII.GetString(b, 0, k);
-        Vector3[] tumor_center_disp = TumorStuff(tumorInfor);
-        Vector3 tumorCeter = tumor_center_disp[0];
-        Vector3 tumorDisp = tumor_center_disp[1];
-        GameObject tumor = GameObject.Find("tumor");
-        Mesh tumorMesh = ReturnMesh(tumor);
-        tumorMesh.vertices = tumorVertices;
-        tumorMesh.bounds = new Bounds(Vector3.zero, Vector3.one * 2000); // otherwise, tumor will disappear at some angle
-        MoveObjectMesh(tumor, tumorDisp + tumorCeter);
+        GameObject tumor = GameObject.Find("Tumor");
+        Tumor tumorScript = tumor.GetComponent<Tumor>();
+        tumorScript.PredictionLocationParse(tumorInfor);
         
         string szReceived = " ";
         Vector3 vertex;
-
 
         StreamReader reader = Reader("F:/Research/FEA simulation for NN/train_patient_specific/disp_prediction.txt");
         szReceived = reader.ReadLine();
 
         reader.Close();
-        Debug.Log("Time for sending data2: " + (Time.realtimeSinceStartup - timeBeforeTotal).ToString());
+    //    Debug.Log("Time for sending data2: " + (Time.realtimeSinceStartup - timeBeforeTotal).ToString());
 
         List<int> indices = new List<int>();
         if (client.Connected)
@@ -288,7 +257,7 @@ public class receive : MonoBehaviour
 
             double timeBefore = Time.realtimeSinceStartup;
             mesh.vertices = verticesAfterDisp.ToArray();
-            Debug.Log("Time for reading data: " + (timeAfter - timeBefore).ToString());
+           // Debug.Log("Time for reading data: " + (timeAfter - timeBefore).ToString());
             //   Debug.Log("Getting data from Python " + words.Length);
             //   Debug.Log("Start: " + words[0]);
             //   Debug.Log("End: " + words[words.Length - 5]);
@@ -298,11 +267,8 @@ public class receive : MonoBehaviour
             Debug.Log(" Not Connected");
 
         }
-        Debug.Log("Time for sending data3: " + (Time.realtimeSinceStartup - timeBeforeTotal).ToString());
+       // Debug.Log("Time for sending data3: " + (Time.realtimeSinceStartup - timeBeforeTotal).ToString());
         client.Close();
-
-        Mesh m = tumor.GetComponent<MeshFilter>().mesh;
-        m.bounds = new Bounds(Vector3.zero, Vector3.one * 2000); // tumor won't be seen at some angle 
     }
 
 }

@@ -9,21 +9,26 @@ public class GetAndSetText : MonoBehaviour {
     public InputField angle;
     public InputField ratio;
     public InputField rotatePlane;
+    public Slider tumorSlider;
     private Vector3 breastAngleHistory;
     private Vector3 humanPos;
     private Vector3 femaleCenter;
+    private GameObject female;
+    private GameObject breast;
+    private GameObject tumor;
+
     public void Start()
     {
         breastAngleHistory = new Vector3(90f, 0f, -90f);
         humanPos = new Vector3(-21.935f, 0.268f, -0.894f);
-        GameObject female = GameObject.Find("Female");
+        female = GameObject.Find("Female");
         femaleCenter = GameObject.Find("Female Center").transform.position;
+        breast = GameObject.Find("Breast");
+        tumor = GameObject.Find("Tumor");
     }
 
     public void Setget()
     {
-        GameObject breast = GameObject.Find("Breast");
-        GameObject female = GameObject.Find("Female");
         receive breastScript = breast.GetComponent<receive>();
         if (float.Parse(angle.text) == null || float.Parse(ratio.text) == null)
         {
@@ -47,11 +52,10 @@ public class GetAndSetText : MonoBehaviour {
             female.transform.RotateAround(femaleCenter, Vector3.left, 180f - breastAngle);
         }        
         breastScript.Prediction(direction, glandularFatRatio);
-        Vector3 offset = new Vector3(140.5f, -7.9f, 115.9f);        
-        Debug.Log(breastAngleHistory);
-        GameObject.Find("DirStart").transform.position = offset;
-        GameObject.Find("DirEnd").transform.position = offset + direction * 5;
-        MoveArrow(offset, offset + direction * 5f, 8);
+        Vector3 offset = new Vector3(140.5f, -7.9f, 115.9f);
+      //  GameObject.Find("DirStart").transform.position = offset;
+      //  GameObject.Find("DirEnd").transform.position = offset + direction * 5;
+      //  MoveArrow(offset, offset + direction * 5f, 8);
     }
 
     private void MoveArrow(Vector3 start, Vector3 end, int numOfArrow)
@@ -75,5 +79,11 @@ public class GetAndSetText : MonoBehaviour {
             arrow[i].transform.position = start + i * arrowSpace;
         }            
        
+    }
+
+    public void ScaleTumorMesh()
+    {
+        Tumor tumorScript = tumor.GetComponent<Tumor>();
+        tumorScript.ScaleTumorMesh(tumorSlider.value);
     }
 }
