@@ -17,6 +17,8 @@ public class GetAndSetText : MonoBehaviour {
     private GameObject female;
     private GameObject breast;
     private GameObject tumor;
+    private GameObject bed;
+    private GameObject lowerCamera;
     private int rotatePlaneValue;
     private float angle;
 
@@ -28,6 +30,8 @@ public class GetAndSetText : MonoBehaviour {
         femaleCenter = GameObject.Find("Female Center").transform.position;
         breast = GameObject.Find("Breast");
         tumor = GameObject.Find("Tumor");
+        bed = GameObject.Find("Hospital Bed");
+        lowerCamera = GameObject.Find("Lower Camera");
     }
 
     public void GetRotatePlane(int index)
@@ -53,14 +57,23 @@ public class GetAndSetText : MonoBehaviour {
         {
             direction = new Vector3(Mathf.Cos(breastAngle * Mathf.Deg2Rad), Mathf.Sin(breastAngle * Mathf.Deg2Rad), 0);
             female.transform.RotateAround(femaleCenter, Vector3.forward, 180f - breastAngle);
+            bed.transform.position = new Vector3(125.13f, -0.2f, -247.7f);
+            bed.transform.eulerAngles = new Vector3(5.8f, -0.67f, -79.19801f);
+            lowerCamera.transform.position = new Vector3(149.9f, -55.7f, -239.5f);
+            lowerCamera.transform.eulerAngles = new Vector3(-72.3f, 268.9f, -0.2f);
         }
         else
         {
             direction = new Vector3(0f, Mathf.Cos((breastAngle + 180) * Mathf.Deg2Rad), Mathf.Sin((breastAngle + 180) * Mathf.Deg2Rad));
             female.transform.RotateAround(femaleCenter, Vector3.right, 180f - breastAngle);
+            bed.transform.position = new Vector3(133.8f, 17.6f, -211.1f);
+            bed.transform.eulerAngles = new Vector3(-7.9f, -89.3f, -186.3f);
+            lowerCamera.transform.position = new Vector3(137.9f, -51.7f, -212f);
+            lowerCamera.transform.eulerAngles = new Vector3(-85.663f, 271.435f, -3.316f);
         }        
         breastScript.Prediction(direction, glandularFatRatio);
         Vector3 offset = new Vector3(140.5f, -7.9f, 115.9f);
+        
       //  GameObject.Find("DirStart").transform.position = offset;
       //  GameObject.Find("DirEnd").transform.position = offset + direction * 5;
       //  MoveArrow(offset, offset + direction * 5f, 8);
