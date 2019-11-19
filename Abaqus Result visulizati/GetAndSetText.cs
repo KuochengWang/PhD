@@ -11,6 +11,8 @@ public class GetAndSetText : MonoBehaviour {
     public Slider tumorSlider;
     public Slider angleSlider;
     public Dropdown rotatePlane;
+    public Text postureAngleValue;
+    public Text tumorRadiusValue;
     private Vector3 breastAngleHistory;
     private Vector3 humanPos;
     private Vector3 femaleCenter;
@@ -107,10 +109,12 @@ public class GetAndSetText : MonoBehaviour {
     {
         Tumor tumorScript = tumor.GetComponent<Tumor>();
         tumorScript.ScaleTumorMesh(tumorSlider.value);
+        tumorRadiusValue.text = tumorSlider.value.ToString();
     }
 
     public void GetAngle()
     {
         angle = angleSlider.value;
+        postureAngleValue.text = angle.ToString();
     }
 }
