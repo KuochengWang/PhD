@@ -1,10 +1,15 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 
 public class KeyControl : MonoBehaviour {
 
-    GameObject breast;
+    private GameObject breast;
+    public int cameraWidth = 400;
+    public int cameraHeight = 300;
+    public float cameraStartX = 200;
+    public float cameraStartY = 0;
 
 	// Use this for initialization
 	void Start () {
@@ -30,5 +35,23 @@ public class KeyControl : MonoBehaviour {
         {
             breast.transform.RotateAround(breastScript.breastCenter, Vector3.left, 2); ;
         }
+        if (Input.GetKey(KeyCode.P))
+        {
+            StartCoroutine(Capturescreen());
+        }
 	}
+
+    private IEnumerator Capturescreen()
+    {
+        yield return new WaitForEndOfFrame();
+        Texture2D tex = new Texture2D(cameraWidth, cameraHeight, TextureFormat.RGB24, false);
+
+        tex.ReadPixels(new Rect(cameraStartX, cameraStartY, cameraWidth, cameraHeight), 0, 0);
+        tex.Apply();
+
+        // Encode texture into PNG
+        var bytes = tex.EncodeToPNG();
+        Destroy(tex);
+        File.WriteAllBytes(Application.dataPath + "/../SavedScreen.png", bytes);
+    }
 }
