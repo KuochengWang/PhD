@@ -214,23 +214,29 @@ if __name__ == "__main__":
             abaqus.write_output(file_name)
     
     if purpose == 'weight':  # read the result .odb file and added the displacement to the model 
-        odb_files = glob.glob('F:/Research/FEA simulation for NN/stl/Abaqus_outputs/weight/glandular_fat_10_90/*odb')
+        odb_files = glob.glob('F:/Research/FEA simulation for NN/stl/Abaqus_outputs/weight/glandular_fat_90_10/*odb')
         for file in odb_files:
-            output_folder = 'F:/Research/FEA simulation for NN/train_patient_specific/disps'
+            output_folder = 'F:/Research/FEA simulation for NN/train_patient_specific/disps/glandular_fat_90_10'
             disps = read_lastframe(file, breast_step, breast_part) 
             file_name = os.path.basename(file)   
             file_name = os.path.join(output_folder, file_name.split('.')[0] + '.txt')
             write_to_file(file_name, disps, 'write')
             
     if purpose == 'tumor':
-        odb_files = glob.glob('F:/Research/FEA simulation for NN/stl/Abaqus_outputs/weight/glandular_fat_10_90/*odb')       
+        odb_files = glob.glob('F:/Research/FEA simulation for NN/stl/Abaqus_outputs/weight/glandular_fat_90_10/*odb')       
         for file in odb_files:
-            output_folder = 'F:/Research/FEA simulation for NN/train_patient_specific/tumor'
+            output_folder = 'F:/Research/FEA simulation for NN/train_patient_specific/tumor/glandular_fat_90_10'
             inp_file = 'Weight Jobs/reference_pos.inp'
             args = [inp_file, tumor_elset, file, breast_part_start, breast_step, breast_part]
-            disp = center_disp(args)     
-            file_name = os.path.basename(file)   
+            
+               
+            file_name = os.path.basename(file)  
+          #  if file_name == 'reference_pos_x_y_0.odb':
+          #      pdb.set_trace()
+         #   else:
+         #       continue
             file_name = os.path.join(output_folder, file_name.split('.')[0] + '.txt')
+            disp = center_disp(args)  
             output_file = open(file_name, 'w')
-            output_file.write(str(disp[0]) + ' ' + str(disp[1]) + ' ' + str(disp[0]))
+            output_file.write(str(disp[0]) + ' ' + str(disp[1]) + ' ' + str(disp[2]))
             output_file.close()
