@@ -37,7 +37,7 @@ public class receive : MonoBehaviour
         gameObject.AddComponent<MeshFilter>();
         gameObject.AddComponent<MeshRenderer>();
         Color newColor = new Color(200f, 100f, 100f, 0.5f);
-        gameObject.GetComponent<MeshRenderer>().material.color = new Color(1.0f, 1.0f, 1.0f, 0.5f); ;
+    //    gameObject.GetComponent<MeshRenderer>().material.color = new Color(1.0f, 1.0f, 1.0f, 0.5f); ;
         mesh = GetComponent<MeshFilter>().mesh;
         triangles = new List<int>();
         mesh.Clear();
@@ -56,14 +56,14 @@ public class receive : MonoBehaviour
             //   colors[i].g = Random.Range(0f, 0.1f);
             //   colors[i] = new Color(0.3f, 0.4f, 0.6f, 0.3f);
         }
-        mesh.colors = colors;
+     //   mesh.colors = colors;
         mesh.RecalculateNormals();
         needle = GameObject.Find("needle");
         yaw = 0f;
 
         breastCenter = CalculateCenter(vertices);
         
-        gameObject.GetComponent<MeshRenderer>().material.color = new Color(1.0f, 1.0f, 1.0f, 0.7f);
+       // gameObject.GetComponent<MeshRenderer>().material.color = new Color(1.0f, 1.0f, 1.0f, 0.7f);
         //  transform.Translate(-breastCenter);
     }
 
@@ -237,6 +237,7 @@ public class receive : MonoBehaviour
     //    Debug.Log("Time for sending data2: " + (Time.realtimeSinceStartup - timeBeforeTotal).ToString());
 
         List<int> indices = new List<int>();
+        ColorCode newClor = new ColorCode();
         if (client.Connected)
         {
             disp = new List<Vector3>();
@@ -257,6 +258,7 @@ public class receive : MonoBehaviour
 
             double timeBefore = Time.realtimeSinceStartup;
             mesh.vertices = verticesAfterDisp.ToArray();
+            newClor.AddColor(mesh, disp, indices, trianglesUnique);
         }
         else
         {
