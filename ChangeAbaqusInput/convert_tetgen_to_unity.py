@@ -4,12 +4,13 @@ Created on Tue Oct 15 21:41:01 2019
 
 @author: vr_lab
 """
+import pdb
 import read_tetgen
 
 
 # arg:
 # filename: the output file you want to write to
-# points: a list of 3D points
+# points: a list of 3D points or 1D points
 # write_flag: whether to rewrite ('w') or append('a')
 def write_to_file(filename, points, write_flag):
     if write_flag == 'write':
@@ -19,8 +20,11 @@ def write_to_file(filename, points, write_flag):
     else:
         return
     for index, point in enumerate(points):
-        output_file.write(str(point[0]) + ' ' + str(point[1]) + 
-                          ' ' + str(point[2]) + '\n')
+        if len(point) == 3:
+            output_file.write(str(point[0]) + ' ' + str(point[1]) + 
+                              ' ' + str(point[2]) + '\n')
+        if len(point) == 1:
+            output_file.write(str(point[0]) + '\n')
     output_file.close()
 
 if __name__ == "__main__":

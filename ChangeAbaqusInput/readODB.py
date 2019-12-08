@@ -13,6 +13,7 @@ import sys
 # to run: abaqus python readODB.py unload  or
 # abaqus python readODB.py weight or
 # abaqus python readODB.py tumor
+# abaqus python readODB.py tumor
 # the unload is to cancle the gravity, weight is read the result .odb file and 
 # added the displacement to the model,  
 
@@ -213,14 +214,19 @@ if __name__ == "__main__":
                 file_name = inp_output_folder + '/' + file_name.split('.')[0] + '.inp'
             abaqus.write_output(file_name)
     
-    if purpose == 'weight':  # read the result .odb file and added the displacement to the model 
-        odb_files = glob.glob('F:/Research/FEA simulation for NN/stl/Abaqus_outputs/weight/glandular_fat_90_10/*odb')
+    if purpose == 'weight' or purpose == 'distance':  # read the result .odb file and added the displacement to the model 
+        odb_files = glob.glob('F:/Research/FEA simulation for NN/stl/Abaqus_outputs/weight/test/*odb')
         for file in odb_files:
-            output_folder = 'F:/Research/FEA simulation for NN/train_patient_specific/disps/glandular_fat_90_10'
+            output_folder = 'F:/Research/FEA simulation for NN/stl/Abaqus_outputs/weight/test'
             disps = read_lastframe(file, breast_step, breast_part) 
             file_name = os.path.basename(file)   
             file_name = os.path.join(output_folder, file_name.split('.')[0] + '.txt')
-            write_to_file(file_name, disps, 'write')
+            if purpose == 'weight':
+                write_to_file(file_name, disps, 'write')
+            if purpose == 'distance':
+                disp_numpy = np.array(disps)
+                distance = np.reshape(np.sum(np.abs(disp_numpy)**2,axis=-1)**(1./2), (-1, 1))
+                write_to_file(file_name, distance.tolist(), 'write')
             
     if purpose == 'tumor':
         odb_files = glob.glob('F:/Research/FEA simulation for NN/stl/Abaqus_outputs/weight/glandular_fat_90_10/*odb')       
