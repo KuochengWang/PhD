@@ -81,7 +81,7 @@ class GetInfoFromBreast:
         return surface_point, surface_point_index
     
     # return a numpy array of unique face indices
-    def __read_face_indices__(self, surface_file):
+    def read_face_indices(self, surface_file):
         surface_points = []
         surface_points_indices = []
         content = read_tetgen.ReadTetGen('', '')
@@ -90,7 +90,7 @@ class GetInfoFromBreast:
         return surface
     
     def read_face_points(self, surface_file):
-        surface_indices = self.__read_face_indices__(surface_file)
+        surface_indices = self.read_face_indices(surface_file)
         points = []
         for index in surface_indices:
             points.append(self.coordinates[index])
@@ -111,7 +111,7 @@ class GetInfoFromBreast:
     # return:
     # a list of surface points and their indices
     def find_all_surface_point(self, grid_points, surface_file):
-        surface = self.__read_face_indices__(surface_file)
+        surface = self.read_face_indices(surface_file)
         for i, point in enumerate(grid_points):
             surface_point, surface_point_index = self.find_surface_point(point, surface.tolist())
             surface_points.append(surface_point)
@@ -458,24 +458,35 @@ if __name__ == "__main__":
         
     if  scenario == 'gravity':
        breast_info = GetInfoFromBreast(element, node)
-       
-     #  center = breast_info.find_center(surface)
-     #  set_assembly(self, file_name, vec, start_line)
        inp_file = 'Weight Jobs/reference_pos.inp'
        gravity = '** Name: GRAVITY-1   Type: Gravity\n'
-       output_folder = 'Weight Jobs'
+       output_folder = 'F:/Research/FEA simulation for NN/stl/Abaqus_outputs/weight'
        abaqus = manipulate_abaqus_file.ReadAbaqusInput(inp_file)
        angle_interval = 5 # 5 degree 
        circle_angle = 360
        angles = np.linspace(start = 0, stop = circle_angle, num = circle_angle / angle_interval + 1)
        gravity_magnitude = 9810
+       glandular_fat_ratio = 0.33
+       glandular_density = 1020e-12
+       fat_density = 910e-12
+       glandular_densityline = '*Material, name=GLANDULAR\n'
+       fat_densityline = '*Material, name=FAT\n'
+       glandular_elasticity = 120e-6  # c1 value in the paper
+       fat_elasticity = 80e-6
        for angle in list(angles):
+           x = math.cos(math.radians(angle))
            z = math.cos(math.radians(angle)) 
            y = math.sin(math.radians(angle)) 
-           direction = [0, z, y]
-           
+           direction = [x, y, 0]   
            abaqus.change_gravity(gravity, direction, gravity_magnitude)
+           density = glandular_fat_ratio * glandular_density + (1 - glandular_fat_ratio) * fat_density
+           abaqus.change_density(glandular_densityline, density)
+           abaqus.change_density(fat_densityline, density)
+           elasticity = glandular_fat_ratio * glandular_elasticity + (1 - glandular_fat_ratio) * fat_elasticity
+           abaqus.change_elsticity(glandular_densityline, elasticity)
+           abaqus.change_elsticity(fat_densityline, elasticity)
            file_name = inp_file.split('/')[-1]
            file_name = file_name.split('.')[0]
-           file_name += '_z_' + 'y_' + str(int(angle)) + '.inp'
+          # file_name += '_x_' + 'y_' + str(int(angle)) + '.inp'
+           file_name += '_y_' + 'z_' + str(int(angle)) + '.inp'
            abaqus.write_output(output_folder + '/' + file_name)
