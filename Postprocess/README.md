@@ -1,0 +1,1 @@
+Use generate_scenario.py to generate the scenario, use “abaqus python readODB.py distance” and “abaqus python readODB.py weight” to read the displacement and distance. Use excel to plot distance. Run Unity for prediction, run calculateerror.m to calculate error, use excel to plot
