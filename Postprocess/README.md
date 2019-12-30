@@ -1,1 +1,2 @@
-Use generate_scenario.py to generate the scenario, use “abaqus python readODB.py distance” and “abaqus python readODB.py weight” to read the displacement and distance. Use calculateerror.m to find surface distance. Use excel to plot distance. Run Unity for prediction, run calculateerror.m to calculate error, use excel to plot
+Use generate_scenario.py to generate the scenario, use “abaqus python readODB.py distance” and “abaqus python readODB.py weight” to read the displacement and distance. Use calculateerror.m to find surface distance. Use excel to plot distance. Run Unity for prediction, run calculateerror.m to calculate error, use excel to plot. 
+Another way is instead of generating plot in Excel, generate in python. This actually gives a better looking result.
