@@ -30,7 +30,7 @@ def parse(filename):
         mesh_triangles[i][0] = data.GetPolys().GetData().GetValue(i*4+1)
         mesh_triangles[i][1] = data.GetPolys().GetData().GetValue(i*4+2)
         mesh_triangles[i][2] = data.GetPolys().GetData().GetValue(i*4+3)
-    return mesh_points, mesh_triangles
+    return mesh_points, mesh_triangles.astype(int)
 
 def compare_faces(face_to_delete, face):
     for temp_face_to_delete in face_to_delete:
@@ -39,6 +39,7 @@ def compare_faces(face_to_delete, face):
     return False
 
 def write_to_file(filename, face_to_delete, output_filename):
+    
     Points = vtk.vtkPoints()
     Triangles = vtk.vtkCellArray()
     Triangle = vtk.vtkTriangle()
@@ -53,11 +54,11 @@ def write_to_file(filename, face_to_delete, output_filename):
             Triangle.GetPointIds().SetId(1, int(face[1]))
             Triangle.GetPointIds().SetId(2, int(face[2]))
             Triangles.InsertNextCell(Triangle)
-    pdb.set_trace()
     polydata = vtk.vtkPolyData()
     polydata.SetPoints(Points)
     polydata.SetPolys(Triangles)
     polydata.Modified()
+    
     if vtk.VTK_MAJOR_VERSION <= 5:
         polydata.Update()
     writer = vtk.vtkSTLWriter();
@@ -68,56 +69,35 @@ def write_to_file(filename, face_to_delete, output_filename):
         writer.SetInputData(polydata)
     writer.Write()
 
+def read_intersection_faces(filename):
+    file = open(filename, 'r') 
+    lines = file.readlines() 
+      
+    count = 0
+    # Strips the newline character 
+    faces = np.zeros([len(lines), 3])
+    for line in lines: 
+        content = line.strip()
+        if content[0] == '(':
+            no_left_parenthesis = content.replace('(', '')
+            no_right_parenthesis = no_left_parenthesis.replace(')', '')
+            f1 = no_right_parenthesis.split('and')[0].replace(',', ' ')
+            f1 = f1.split()
+            f2 = no_right_parenthesis.split('and')[1].replace(',', ' ')
+            
+            f2 = f2.split()
+            faces[count * 2] = [int(f1[0]), int(f1[1]), int(f1[2])]
+            faces[count * 2 + 1] = [int(f2[0]), int(f2[1]), int(f2[2])]
+            count += 1
+    return faces     
         
 if __name__ == "__main__":
-    face_to_delete = np.zeros([46,3])
-    face_to_delete[0] = [16185, 16181, 17285]
-    face_to_delete[1] = [19761, 19686, 19688]
-    face_to_delete[2] = [17299, 17285, 16181]
-    face_to_delete[3] = [19688, 20418, 19761]
-    face_to_delete[4] = [17299, 17285, 16181]
-    face_to_delete[5] = [19761, 19686, 19688]
-    face_to_delete[6] = [17299, 18137, 17285]
-    face_to_delete[7] = [20418, 19688, 18137]
-    face_to_delete[8] = [19658, 19659, 19660]
-    face_to_delete[9] = [20409, 19658, 24729]
-    face_to_delete[10] = [20409, 19660, 21856]
-    face_to_delete[11] = [20409, 19658, 24729]
-    face_to_delete[12] = [20409, 19660, 21856]
-    face_to_delete[13] = [20408, 19659, 20409]
-    face_to_delete[14] = [19659, 21856, 19660]
-    face_to_delete[15] = [20409, 19658, 24729]
-    face_to_delete[16] = [19659, 21856, 19660]
-    face_to_delete[17] = [20408, 19659, 20409]
-    face_to_delete[18] = [16185, 17285, 17286]
-    face_to_delete[19] = [19686, 19687, 19688]
-    face_to_delete[20] = [19687, 19686, 18945]
-    face_to_delete[21] = [16168, 17286, 17283]
-    face_to_delete[22] = [19670, 17283, 19687]
-    face_to_delete[23] = [18945, 19670, 19687]
-    face_to_delete[24] = [16168, 16165, 17286]
-    face_to_delete[25] = [19687, 19686, 18945]
-    face_to_delete[26] = [18945, 19670, 19687]
-    face_to_delete[27] = [16185, 17286, 16165]
-    face_to_delete[28] = [19687, 19686, 18945]
-    face_to_delete[29] = [16185, 17285, 17286]
-    face_to_delete[30] = [19686, 19687, 19688]
-    face_to_delete[31] = [16185, 17285, 17286]
-    face_to_delete[32] = [19687, 19686, 18945]
-    face_to_delete[33] = [19761, 19686, 19688]
-    face_to_delete[34] = [16185, 17286, 16165]
-    face_to_delete[35] = [19687, 19686, 18945]
-    face_to_delete[36] = [16185, 16181, 17285]
-    face_to_delete[37] = [19761, 19686, 19688]
-    face_to_delete[38] = [17299, 17285, 16181]
-    face_to_delete[39] = [20418, 19688, 18137]
-    face_to_delete[40] = [17299, 17285, 16181]
-    face_to_delete[41] = [19688, 20418, 19761]
-    face_to_delete[42] = [17299, 17285, 16181]
-    face_to_delete[43] = [19761, 19686, 19688]
-    face_to_delete[44] = [17299, 18137, 17285]
-    face_to_delete[45] = [20418, 19688, 18137]
-    output_filename = "FGT_Cluster_1-2_modified.stl"
-    points = write_to_file("FGT_Cluster_1-2_modified.stl", face_to_delete, output_filename)
+    intersection_file = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\intersection.txt'
+    output_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\FGT_Cluster_Biggest.stl'
+    input_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\FGT_Cluster_Simplified.stl'
+    face_to_delete = read_intersection_faces(intersection_file)
+    write_to_file(input_filename, face_to_delete, output_filename)
+  #  output_filename = "FGT_Cluster_1-2_modified.stl"
+  #  points = write_to_file("FGT_Cluster_1-2_modified.stl", face_to_delete, output_filename)
     
     
