@@ -5,10 +5,15 @@ Created on Wed Sep  4 15:58:12 2019
 @author: vr_lab
 """
 
-# This file will delete the vertices based on user specification.
+# This file can 1. delete the vertices based on user specification, 2. find the 
+# outter surface of mesh if there are parts inside the closed mesh.
 # TetGen detects intersect surfaces. We can delete them and regenerate using 
 # Meshmixer. 
+# To run 1: python change_stl.py --mode=delete_mesh
+# To run 2: python change_stl.py --mode=outline
 
+import argparse
+import find_tet_inside_trianglemesh
 import numpy as np
 import pdb
 import vtk
@@ -90,14 +95,68 @@ def read_intersection_faces(filename):
             faces[count * 2 + 1] = [int(f2[0]), int(f2[1]), int(f2[2])]
             count += 1
     return faces     
+
+# find the outline of an object file based on x-axis
+def find_outline(filename, output_filename):
+    points, faces = parse(filename)
+    collision_labels = set()
+  #  pdb.set_trace()
+    for face_index, face in enumerate(faces):
+        face_center = (points[face[0]] + points[face[1]] + points[face[2]]) / 3
+        max_x = face_center[0]
+        min_x = face_center[0]
+        furthest = [face_index, face_index]
+        print(face_index)
+        x_positive = np.array([10000, 0, 0])
+        x_negative = np.array([-10000, 0, 0])
+        ray_positive = np.array([face_center, x_positive])
+        ray_negative = np.array([face_center, x_negative])
+        for otherface_index, otherface in enumerate(faces):
+            if face_index == otherface_index:
+                continue
+            point1 = points[otherface[0]]
+            point2 = points[otherface[1]]
+            point3 = points[otherface[2]]
+            otherface_center = (point1 + point2 + point3) / 3
+            
+            triangle = np.array([point1, point2, point3])
+            if(find_tet_inside_trianglemesh.ray_intersect_triangle(triangle, ray_positive)
+            or find_tet_inside_trianglemesh.ray_intersect_triangle(triangle, ray_negative)):
+                if otherface_center[0] > max_x:
+                    furthest[0] = otherface_index
+                    max_x = otherface_center[0]
+                if otherface_center[0] < min_x:
+                    furthest[1] = otherface_index
+                    min_x = otherface_center[0]
+    #    pdb.set_trace()
+        collision_labels.add(furthest[0])
+        collision_labels.add(furthest[1])
+    face_to_delete = []
+    for face_index, face in enumerate(faces): 
+        if face_index not in collision_labels:
+            face_to_delete.append(face)
+    pdb.set_trace()
+    write_to_file(filename, face_to_delete, output_filename)
         
 if __name__ == "__main__":
-    intersection_file = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\intersection.txt'
-    output_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\FGT_Cluster_Biggest.stl'
-    input_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\FGT_Cluster_Simplified.stl'
-    face_to_delete = read_intersection_faces(intersection_file)
-    write_to_file(input_filename, face_to_delete, output_filename)
-  #  output_filename = "FGT_Cluster_1-2_modified.stl"
-  #  points = write_to_file("FGT_Cluster_1-2_modified.stl", face_to_delete, output_filename)
-    
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument('--mode', help='What are you trying to do? write_mesh or boundary_condition', type=str)
+    args = arg_parser.parse_args()
+    mode = args.mode
+    if mode == 'delete_mesh':
+        intersection_file = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\intersection.txt'
+      #  output_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\FGT_Cluster_Biggest.stl'
+      #  input_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\FGT_Cluster_Simplified.stl'
+        output_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\mass2_processed.stl'
+        input_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\mass2.stl'
+        face_to_delete = read_intersection_faces(intersection_file)
+        write_to_file(input_filename, face_to_delete, output_filename)
+      #  output_filename = "FGT_Cluster_1-2_modified.stl"
+      #  points = write_to_file("FGT_Cluster_1-2_modified.stl", face_to_delete, output_filename)
+    if mode == 'outline':
+        input_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\FGT_Cluster_Simplified.stl'
+        output_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\FGT_Cluster_Y_Outline.stl'
+    #    input_filename =   'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\\torus_cube.stl'
+    #    output_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\\torus_Outline.stl'
+        find_outline(input_filename, output_filename)
     
