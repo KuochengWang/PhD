@@ -97,20 +97,30 @@ def read_intersection_faces(filename):
     return faces     
 
 # find the outline of an object file based on x-axis
-def find_outline(filename, output_filename):
+ # arguments:
+    # axis: 0-x axis 1-y axis 2-z axis 
+def find_outline(filename, output_filename, axis):
     points, faces = parse(filename)
     collision_labels = set()
+    distance = 10000
   #  pdb.set_trace()
     for face_index, face in enumerate(faces):
         face_center = (points[face[0]] + points[face[1]] + points[face[2]]) / 3
-        max_x = face_center[0]
-        min_x = face_center[0]
+        max_axis = face_center[axis]
+        min_axis = face_center[axis]
         furthest = [face_index, face_index]
         print(face_index)
-        x_positive = np.array([10000, 0, 0])
-        x_negative = np.array([-10000, 0, 0])
-        ray_positive = np.array([face_center, x_positive])
-        ray_negative = np.array([face_center, x_negative])
+        if axis == 0:
+            axis_positive = np.array([distance, 0, 0])
+            axis_negative = np.array([-distance, 0, 0])
+        elif axis == 1: 
+            axis_positive = np.array([0, distance, 0])
+            axis_negative = np.array([0, -distance, 0])
+        else:
+            axis_positive = np.array([0, 0, distance])
+            axis_negative = np.array([0, 0, -distance])
+        ray_positive = np.array([face_center, axis_positive])
+        ray_negative = np.array([face_center, axis_negative])
         for otherface_index, otherface in enumerate(faces):
             if face_index == otherface_index:
                 continue
@@ -118,16 +128,16 @@ def find_outline(filename, output_filename):
             point2 = points[otherface[1]]
             point3 = points[otherface[2]]
             otherface_center = (point1 + point2 + point3) / 3
-            
+
             triangle = np.array([point1, point2, point3])
             if(find_tet_inside_trianglemesh.ray_intersect_triangle(triangle, ray_positive)
             or find_tet_inside_trianglemesh.ray_intersect_triangle(triangle, ray_negative)):
-                if otherface_center[0] > max_x:
+                if otherface_center[axis] > max_axis:
                     furthest[0] = otherface_index
-                    max_x = otherface_center[0]
-                if otherface_center[0] < min_x:
+                    max_axis = otherface_center[axis]
+                if otherface_center[axis] < min_axis:
                     furthest[1] = otherface_index
-                    min_x = otherface_center[0]
+                    min_axis = otherface_center[axis]
     #    pdb.set_trace()
         collision_labels.add(furthest[0])
         collision_labels.add(furthest[1])
@@ -135,12 +145,12 @@ def find_outline(filename, output_filename):
     for face_index, face in enumerate(faces): 
         if face_index not in collision_labels:
             face_to_delete.append(face)
-    pdb.set_trace()
+  #  pdb.set_trace()
     write_to_file(filename, face_to_delete, output_filename)
         
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('--mode', help='What are you trying to do? write_mesh or boundary_condition', type=str)
+    arg_parser.add_argument('--mode', help='What are you trying to do? delete_mesh or outline', type=str)
     args = arg_parser.parse_args()
     mode = args.mode
     if mode == 'delete_mesh':
@@ -154,9 +164,15 @@ if __name__ == "__main__":
       #  output_filename = "FGT_Cluster_1-2_modified.stl"
       #  points = write_to_file("FGT_Cluster_1-2_modified.stl", face_to_delete, output_filename)
     if mode == 'outline':
-        input_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\FGT_Cluster_Simplified.stl'
-        output_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\FGT_Cluster_Y_Outline.stl'
-    #    input_filename =   'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\\torus_cube.stl'
-    #    output_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\\torus_Outline.stl'
-        find_outline(input_filename, output_filename)
+    #    input_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\FGT_Cluster_Simplified.stl'
+    #    output_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\FGT_Cluster_Y_Outline.stl'
+        input_filename =   'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\\3torus.stl'
+        output_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\\torus_XOutline.stl'
+        find_outline(input_filename, output_filename, 0)
+        
+        output_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\\torus_YOutline.stl'
+        find_outline(input_filename, output_filename, 1)
+        
+        output_filename = 'F:\Research\Breast Model\BM_Fatty_001\Left\Fat_1_Fgt_1\SolidModel\\torus_ZOutline.stl'
+        find_outline(input_filename, output_filename, 2)
     
